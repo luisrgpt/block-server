@@ -1,0 +1,53 @@
+<project name="script" default="create-script">
+
+    <description>
+        Ant module to create OS-specific scripts
+    </description>
+
+    <!--
+        This module is designed to be imported.
+        It assumes that the following definitions have been made:
+        - project.classpath
+        - run.mainclass
+    -->
+
+    <condition property="isWindows">
+        <os family="windows" />
+    </condition>
+
+    <condition property="isUnix">
+       <os family="unix" />
+    </condition>
+
+    <target name="create-script" depends="create-bat,create-sh"
+        description="Create script to run program" />
+
+    <target name="create-bat" if="isWindows">
+    <!-- description="Create Windows batch file to run program" /-->
+
+        <property name="bat.file" value="${ant.project.name}.bat" />
+        <pathconvert targetos="windows" property="project.classpath.win" refid="project.classpath" />
+
+        <echo message="Generating Windows batch file ${bat.file}" />
+        <concat destfile="${bat.file}">@ECHO OFF
+@REM Windows batch file generated automatically to run Java program: ${ant.project.name}
+java -classpath &quot;${project.classpath.win}&quot; ${run.mainclass} %*
+        </concat>
+    </target>
+
+    <target name="create-sh" if="isUnix">
+    <!-- description="Create Unix shell script to run program" /-->
+
+        <property name="sh.file" value="${ant.project.name}.sh" />
+        <property name="sh" value="/bin/sh" />
+        <pathconvert targetos="unix" property="project.classpath.unix" refid="project.classpath" />
+
+        <echo message="Generating Unix script file ${sh.file}" />
+        <concat destfile="${sh.file}">#!${sh}
+# Unix script generated automatically to run Java program: ${ant.project.name}
+java -classpath &quot;${project.classpath.unix}&quot; ${run.mainclass} $*
+        </concat>
+        <chmod file="${sh.file}" perm="u+x" />
+    </target>
+
+</project>

@@ -1,0 +1,120 @@
+<project name="crypto" default="build" basedir=".">
+
+    <description>
+        Java application build file
+
+        An Ant project defines targets that execute tasks
+        parameterized by properties and paths.
+
+        More information at: http://ant.apache.org/manual/
+    </description>
+
+    <!-- properties and paths -->
+
+    <property name="src.dir" location="src" />
+    <property name="build.dir" location="build" />
+    <property name="build.classes.dir" location="${build.dir}/classes" />
+
+    <property name="run.mainclass" value="example.crypto.SecureRandomNumber"/>
+    <property name="run.args" value=""/>
+
+    <path id="project.classpath">
+        <pathelement location="${build.classes.dir}" />
+    </path>
+
+
+    <!-- targets -->
+
+    <target name="show" description="Show property values" >
+        <echo message="ant.project.name = ${ant.project.name}" />
+        <echo message="" />
+        <echo message="src.dir = ${src.dir}" />
+        <echo message="build.dir = ${build.dir}" />
+        <echo message="build.classes.dir = ${build.classes.dir}" />
+        <echo message="" />
+        <echo message="run.mainclass = ${run.mainclass}" />
+        <echo message="run.args = ${run.args}" />
+        <echo message="" />
+        <pathconvert property="project.classpath" refid="project.classpath" />
+        <echo message="project.classpath = ${project.classpath}" />
+        <echo message="" />
+    </target>
+
+    <target name="init">
+        <mkdir dir="${build.dir}"/>
+        <mkdir dir="${build.classes.dir}" />
+    </target>
+
+    <target name="clean"
+        description="Delete build directory" >
+        <delete dir="${build.dir}"/>
+    </target>
+
+    <target name="prepare-resources" depends="init">
+    <!-- description="Prepare application resource files" -->
+        <copy todir="${build.classes.dir}" overwrite="true">
+            <fileset dir="${src.dir}" excludes="**/*.java" />
+        </copy>
+        <!--replace dir="${build.classes.dir}" excludes="**/*.class" summary="true">
+            <replacefilter token="@example-token@" value="${example-property}" />
+        </replace-->
+    </target>
+
+    <target name="compile" depends="prepare-resources"
+        description="Compile source code">
+        <javac srcdir="${src.dir}"
+            destdir="${build.classes.dir}"
+            includeantruntime="false" debug="true">
+            <classpath refid="project.classpath" />
+        </javac>
+    </target>
+
+    <target name="run" depends="compile"
+        description="Run program" >
+        <java classname="${run.mainclass}" fork="true" failonerror="true">
+            <arg line="${run.args}" />
+            <classpath refid="project.classpath" />
+        </java>
+    </target>
+
+    <import file="script.xml" optional="true" />
+
+    <target name="build" depends="compile"
+        description="Build project" />
+
+    <target name="rebuild" depends="clean,build" />
+
+
+    <target name="run-secure-random"
+            description="Run secure random number generation">
+        <antcall target="run" />
+    </target>
+
+    <target name="run-sym-crypto"
+            description="Run symmetric cryptography example">
+        <antcall target="run">
+            <param name="run.mainclass" value="example.crypto.SymCrypto" />
+            <param name="run.args" value="cleartext" />
+        </antcall>
+    </target>
+
+    <target name="run-asym-crypto"
+            description="Run asymmetric cryptography example">
+        <antcall target="run">
+            <param name="run.mainclass" value="example.crypto.AsymCrypto" />
+            <param name="run.args" value="cleartext" />
+        </antcall>
+    </target>
+
+    <target name="run-digest"
+            description="Run digest example">
+        <antcall target="run">
+            <param name="run.mainclass" value="example.crypto.Digest" />
+            <param name="run.args" value="cleartext" />
+        </antcall>
+    </target>
+
+    <target name="run-all" depends="run-secure-random,run-sym-crypto,run-asym-crypto,run-digest"
+            description="Run all examples" />
+
+</project>
