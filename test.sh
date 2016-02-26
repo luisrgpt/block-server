@@ -1,1 +1,0 @@
-echo `which ${0}`
