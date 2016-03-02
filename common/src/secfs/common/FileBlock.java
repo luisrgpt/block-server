@@ -2,7 +2,7 @@ package secfs.common;
 
 import java.io.Serializable;
 
-public abstract class FileBlock extends Container implements Serializable {
+public class FileBlock extends Container implements Serializable {
 	/**
 	 * 
 	 */

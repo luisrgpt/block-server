@@ -8,7 +8,7 @@ public final class KeyBlock extends FileBlock implements Serializable {
 	 */
 	private static final long serialVersionUID = 2317974027660935620L;
 
-	protected KeyBlock(byte[] bytes) {
+	public KeyBlock(byte[] bytes) {
 		super(bytes);
 	}
 }

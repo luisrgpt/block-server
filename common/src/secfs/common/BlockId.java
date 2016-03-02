@@ -9,7 +9,7 @@ public final class BlockId extends Container implements Serializable {
 	 */
 	private static final long serialVersionUID = 6660886462638825356L;
 
-	protected BlockId(byte[] bytes) {
+	public BlockId(byte[] bytes) {
 		super(bytes);
 	}
 	

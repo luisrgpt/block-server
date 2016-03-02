@@ -5,14 +5,15 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
 import secfs.common.BlockId;
-import secfs.common.Encoder;
+import secfs.common.EncodedPublicKey;
+import secfs.common.EncodedSignature;
+import secfs.common.HashBlock;
 import secfs.common.IBlockServer;
+import secfs.common.KeyBlock;
 import secfs.common.RmiNode;
 
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
-import java.security.MessageDigest;
-import java.security.PublicKey;
 import java.security.Signature;
 
 public class BlockServerClient extends RmiNode {
@@ -50,11 +51,23 @@ public class BlockServerClient extends RmiNode {
             KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
             keyGen.initialize(1024);
             KeyPair keys = keyGen.generateKeyPair();
-            blockServer.put_k(
-            		Encoder.getInstance(aux),
-            		Encoder.getInstance(Signature.getInstance("NONEwithRSA"), keys.getPrivate(), aux),
-            		Encoder.getInstance(keys.getPublic()));
-            BlockId id = blockServer.put_h(Encoder.getInstance(MessageDigest.getInstance("MD5"), aux));
+            
+            KeyBlock keyBlock = new KeyBlock(aux);
+            
+            Signature signature = Signature.getInstance("NONEwithRSA");
+            signature.initSign(keys.getPrivate()); //TODO: add random value
+    		signature.update(aux);
+    		EncodedSignature encodedSignature = new EncodedSignature(signature.sign());
+    		
+    		EncodedPublicKey encodedPublicKey = new EncodedPublicKey(keys.getPublic().getEncoded());
+    		
+    		HashBlock hashBlock = new HashBlock(aux);
+    		
+    		BlockId id;
+            id = blockServer.put_k(keyBlock, encodedSignature, encodedPublicKey);
+            blockServer.get(id);
+            
+            id = blockServer.put_h(hashBlock);
             blockServer.get(id);
         } catch(RemoteException e) {
             System.out.println("BlockServer: " + e.getMessage());
