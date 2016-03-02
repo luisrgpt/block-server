@@ -4,8 +4,16 @@ import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 
+import secfs.common.BlockId;
+import secfs.common.Encoder;
 import secfs.common.IBlockServer;
 import secfs.common.RmiNode;
+
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.MessageDigest;
+import java.security.PublicKey;
+import java.security.Signature;
 
 public class BlockServerClient extends RmiNode {
 	
@@ -38,9 +46,16 @@ public class BlockServerClient extends RmiNode {
             byte[] aux = new byte[2];
             aux[0] = (byte) 0;
             aux[1] = (byte) 0;
-            blockServer.get(0);
-            blockServer.put_k(aux, aux, aux);
-            blockServer.put_h(aux);
+            
+            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+            keyGen.initialize(1024);
+            KeyPair keys = keyGen.generateKeyPair();
+            blockServer.put_k(
+            		Encoder.getInstance(aux),
+            		Encoder.getInstance(Signature.getInstance("NONEwithRSA"), keys.getPrivate(), aux),
+            		Encoder.getInstance(keys.getPublic()));
+            BlockId id = blockServer.put_h(Encoder.getInstance(MessageDigest.getInstance("MD5"), aux));
+            blockServer.get(id);
         } catch(RemoteException e) {
             System.out.println("BlockServer: " + e.getMessage());
 	    } catch(Exception e) {
