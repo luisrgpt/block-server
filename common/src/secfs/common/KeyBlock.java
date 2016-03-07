@@ -1,6 +1,7 @@
 package secfs.common;
 
 import java.io.Serializable;
+import java.util.Map;
 
 public final class KeyBlock extends FileBlock implements Serializable {
 	/**
@@ -10,5 +11,9 @@ public final class KeyBlock extends FileBlock implements Serializable {
 
 	public KeyBlock(byte[] bytes) {
 		super(bytes);
+	}
+	
+	public KeyBlock(byte[] bytes, Map<Integer, BlockId> blockTable) {
+		super(bytes, blockTable);
 	}
 }

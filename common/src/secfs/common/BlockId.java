@@ -24,6 +24,6 @@ public final class BlockId extends Container implements Serializable {
 	}
 	
 	public boolean equals(BlockId blockId) {
-		return getBytes().equals(blockId.getBytes());
+		return Arrays.equals(getBytes(), blockId.getBytes());
 	}
 }

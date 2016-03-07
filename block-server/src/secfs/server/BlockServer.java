@@ -31,15 +31,17 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 	private static final long serialVersionUID = -7081463307932455315L;
 
 	Map<BlockId, FileBlock> _dataBase;
+	Map<BlockId, BlockId> _keyBlockIdTable;
 	
 	public BlockServer() throws RemoteException {
 		_dataBase = new HashMap<>();
+		_keyBlockIdTable = new HashMap<>();
     }
 
   	private BlockId createBlockId(byte[] bytes) throws NoSuchAlgorithmException{
     	//Create block id using block's hash
     	MessageDigest messageDigest;
-		messageDigest = MessageDigest.getInstance("sha1");
+		messageDigest = MessageDigest.getInstance("SHA-512");
     	messageDigest.update(bytes);
     	byte[] hash = messageDigest.digest();
     	return new BlockId(hash);
@@ -50,12 +52,23 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
   		
   		//Check if block exists
     	for (Map.Entry<BlockId, FileBlock> entry : _dataBase.entrySet()) {
-    		if(entry.getKey().hashCode() == blockId.hashCode()) {
-    			return entry.getValue();
+    		BlockId currentBlockId = entry.getKey();
+    		if(currentBlockId.hashCode() == blockId.hashCode()) {
+    			try {
+    				BlockId newBlockId = createBlockId(entry.getValue().getBytes());
+    				if(!entry.getKey().equals(newBlockId) &&
+					   (_keyBlockIdTable.get(currentBlockId) == null ||
+					    !_keyBlockIdTable.get(currentBlockId).equals(newBlockId))) {
+						throw new RemoteException("get: Block has been tampered");
+					}
+					return entry.getValue();
+				} catch (NoSuchAlgorithmException e) {
+					throw new RemoteException("get: " + e.getMessage());
+				}
     		}
     	}
   		
-  		throw new RemoteException("EmptySlotException");
+  		throw new RemoteException("get: EmptySlotException");
      }
   	
    	public BlockId put_k(KeyBlock keyBlock, EncodedSignature encodedSignature, EncodedPublicKey encodedPublicKey)
@@ -82,6 +95,7 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
         	for (Map.Entry<BlockId, FileBlock> entry : _dataBase.entrySet()) {
         		if(entry.getKey().hashCode() == blockId.hashCode()) {
         			_dataBase.put(entry.getKey(), keyBlock);
+        			_keyBlockIdTable.put(entry.getKey(), createBlockId(keyBlock.getBytes()));
         			blockExists = true;
         			break;
         		}

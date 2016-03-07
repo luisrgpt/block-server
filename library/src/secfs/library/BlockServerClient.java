@@ -19,8 +19,10 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.lang.Math;
 import java.util.List;
+import java.util.Map;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.security.PublicKey;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
@@ -30,13 +32,15 @@ import java.security.NoSuchAlgorithmException;
 
 public class BlockServerClient extends RmiNode {
 
-	private byte[] _fileId;
+	private static final int BLOCK_LENGTH = 5;
+	
+	private BlockId _fileId;
 	private IBlockServer _blockServer = null;
 
 	private PublicKey _publicKey;
 	private PrivateKey _privateKey;
-	
-	private List<BlockId> _blockSet;
+
+	private Map<Integer, BlockId> _blockTable;
 
 	private IBlockServer getBlockServer()
 			throws RemoteException, NotBoundException {
@@ -48,12 +52,22 @@ public class BlockServerClient extends RmiNode {
 		return _blockServer;
 	}
 
+	private Map<Integer, BlockId> getBlockTable()
+			throws RemoteException, NotBoundException {
+		if (_blockTable == null) {
+			IBlockServer blockServer = getBlockServer();
+			_blockTable = blockServer.get(_fileId).getBlockTable();
+		}
+		return _blockTable;
+	}
+	
 	public byte[] FS_init()
 			throws FileSystemException {
 		System.out.println("Invoking FS_init");
 
 		try {
-			_blockSet = new ArrayList<>();
+			//_blockSet = new ArrayList<>();
+			_blockTable = new HashMap<>();
 			
 			//Generate key pair for RSA encryption
 			KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
@@ -66,39 +80,42 @@ public class BlockServerClient extends RmiNode {
 	
 			//Return public key's sha-1 hash
 			MessageDigest messageDigest;
-			messageDigest = MessageDigest.getInstance("sha1");
+			messageDigest = MessageDigest.getInstance("SHA-512");
 			messageDigest.update(_publicKey.getEncoded());
-			_fileId = messageDigest.digest();
+			_fileId = new BlockId(messageDigest.digest());
 	
-			return _fileId;
+			return _fileId.getBytes();
 		} catch (NoSuchAlgorithmException e) {
 			throw new FileSystemException("FS_write: " + e.getMessage());
 		}
 	}
-
-	private int copyBlock(int pos, int size, byte[] newBlock, byte[] oldBlock) {
-		int limit = Math.min(pos + size, oldBlock.length);
-		for(int index = pos; index < limit; index++) {
-			newBlock[index] = oldBlock[index];
-		}
-
-		return limit;
-	}
 	
-	private void addZeroes(int limit, int pos, byte[] newBlock) {
-		for(int index = limit; index < pos; index++) {
-			newBlock[index] = 0;
-		}
-	}
-	
-	private void addZeroes(int pos, byte[] newBlock) {
-		addZeroes(0, pos, newBlock);
-	}
-	
-	private void copyContent(int pos, int size, byte[] newBlock, byte[] content) {
-		for(int indexA = 0, indexB = pos; indexA < size; indexA++, indexB++) {
+	private int copyContent(int pos, int size, byte[] newBlock, byte[] content, int posContent) {
+		int indexA = posContent;
+		for(int indexB = pos,
+				limitA = size,
+				limitB = newBlock.length;
+				indexA < limitA &&
+				indexB < limitB;
+				indexA++, indexB++) {
 			newBlock[indexB] = content[indexA];
 		}
+		
+		return indexA;
+	}
+	
+	private int extractContent(int pos, int size, byte[] newBlock, byte[] content, int posContent) {
+		int indexA = posContent;
+		for(int indexB = pos,
+				limitA = size,
+				limitB = newBlock.length;
+				indexA < limitA &&
+				indexB < limitB;
+				indexA++, indexB++) {
+			content[indexA] = newBlock[indexB];
+		}
+		
+		return indexA;
 	}
 	
 	private void checkSize(int size, byte[] contents)
@@ -110,15 +127,15 @@ public class BlockServerClient extends RmiNode {
 	
 	public void FS_write(int pos, int size, byte[] contents)
 			throws FileSystemException {
-		//(this phase) if block exists
-		//               then get block
-		//               else create block
+		//foreach key from range(ceiling(pos/length), ceiling(pos+size/length))
+		//    if map contains key
+		//        then get block
+		//        else create block
+		
 		//create block from max(pos + write, block.length) size
 		//get pos position:
 		//  while pointer smaller than pos and pointer smaller than block
 		//    copy block
-		//  while pointer smaller than pos
-		//    add zeros
 		//  while pointer smaller than pos + size
 		//    copy contents
 		//  while pointer smaller than block
@@ -127,38 +144,59 @@ public class BlockServerClient extends RmiNode {
 		//Throws FileSystemException
 		checkSize(size, contents);
 
-		byte[] newBlock;
-		IBlockServer blockServer;
-
 		try {
-			blockServer = getBlockServer();
+			IBlockServer blockServer = getBlockServer();
+			Map<Integer, BlockId> blockTable = getBlockTable();
 
-			if(_blockSet.isEmpty()) {
-				newBlock = new byte[pos + size];
-				addZeroes(pos, newBlock);
-				copyContent(pos, size, newBlock, contents);
+			List<byte[]> blockList = new ArrayList<>();
+			byte[] currentBlock;
+			int firstKey = (int) Math.floor((double) (pos / BLOCK_LENGTH)),
+			    lastKey = (int) Math.ceil((double) ((pos + size) / BLOCK_LENGTH)),
+			    posContent = 0;
+			
+			
+			
+			if(blockTable.containsKey((Integer) firstKey)) {
+				currentBlock = blockServer.get(blockTable.remove(firstKey)).getBytes();
 			} else {
-				byte[] oldBlock;
-				int limit;
-	
-				try {
-					oldBlock = blockServer.get(_blockSet.remove(0)).getBytes();
-				} catch (RemoteException e)  {
-					throw new FileSystemException("FS_write: " + e.getMessage());
-				}
-				newBlock = new byte[Math.max(pos + size, oldBlock.length)];
-				
-				limit = copyBlock(0, pos, newBlock, oldBlock);
-				addZeroes(limit, pos, newBlock);
-				copyContent(pos, size, newBlock, contents);
-				copyBlock(pos + size, oldBlock.length, newBlock, oldBlock);
+				currentBlock = new byte[BLOCK_LENGTH];
 			}
-		
+			
+			posContent = copyContent(pos % BLOCK_LENGTH, size, currentBlock, contents, posContent);
+
+			System.out.println(Arrays.toString(currentBlock));
+			blockList.add(currentBlock);
+			
+			System.out.println("FirstKey: " + firstKey + "; LastKey: " + lastKey);
+			if(lastKey != firstKey + 1 || (pos + size) % BLOCK_LENGTH != 0) {
+				for (int index = firstKey + 1; index <= lastKey; index++) {
+					if(blockTable.containsKey((Integer) index)) {
+						currentBlock = blockServer.get(blockTable.remove(index)).getBytes();
+					} else {
+						currentBlock = new byte[BLOCK_LENGTH];
+					}
+					
+					System.out.println("Pos: " + posContent + "; index: " + index);
+					posContent = copyContent(0, size, currentBlock, contents, posContent);
+	
+					System.out.println(Arrays.toString(currentBlock));
+					blockList.add(currentBlock);
+				}
+			}
+			
+			BlockId blockId;
+			int index = firstKey;
+			for(byte[] block : blockList) {
+				blockId = blockServer.put_h(new HashBlock(block));
+				blockTable.put((Integer) index, blockId);
+				index++;
+			}
+
 			//Create key block
-			KeyBlock keyBlock = new KeyBlock(newBlock);
+			KeyBlock keyBlock = new KeyBlock(null, blockTable);
 		
 			//Create encoded signature
-        	SecureRandom secureRandom = new SecureRandom(newBlock);
+        	SecureRandom secureRandom = new SecureRandom(_publicKey.getEncoded());
         	Signature signature = Signature.getInstance("SHA512withRSA");
 			signature.initSign(_privateKey, secureRandom);
 			signature.update(_publicKey.getEncoded());
@@ -166,7 +204,7 @@ public class BlockServerClient extends RmiNode {
 		
 			//Create encoded public key
 			EncodedPublicKey encodedPublicKey = new EncodedPublicKey(_publicKey.getEncoded());
-			_blockSet.add(blockServer.put_k(keyBlock, encodedSignature, encodedPublicKey));
+			blockServer.put_k(keyBlock, encodedSignature, encodedPublicKey);
 		} catch (RemoteException |
 				 NotBoundException |
 				 NoSuchAlgorithmException |
@@ -174,8 +212,6 @@ public class BlockServerClient extends RmiNode {
 				 SignatureException e)  {
 			throw new FileSystemException("FS_write: " + e.getMessage());
 		}
-		
-		System.out.println(Arrays.toString(newBlock));
 	}
 
 	public int FS_read(byte[] id, int pos, int size, byte[] contents)
@@ -183,63 +219,50 @@ public class BlockServerClient extends RmiNode {
 		//Throws FileSystemException
 		checkSize(size, contents);
 
-		IBlockServer blockServer;
-		byte[] block;
-		int min;
+		int min = 0;
 		try {
-			blockServer = getBlockServer();
-			block = blockServer.get(_blockSet.get(0)).getBytes();
+			IBlockServer blockServer = getBlockServer();
+			Map<Integer, BlockId> blockTable = getBlockTable();
+			
+			byte[] currentBlock;
+			int firstKey = (int) Math.floor((double) (pos / BLOCK_LENGTH)),
+			    lastKey = (int) Math.ceil((double) ((pos + size) / BLOCK_LENGTH)),
+			    posContent = 0;
+			
+			if(blockTable.containsKey((Integer) firstKey)) {
+				currentBlock = blockServer.get(blockTable.remove(firstKey)).getBytes();
+				min += BLOCK_LENGTH;
+			} else {
+				currentBlock = new byte[BLOCK_LENGTH];
+			}
+			
+			posContent = extractContent(pos % BLOCK_LENGTH, size, currentBlock, contents, posContent);
 
-			min = Math.min(size, block.length - pos);
-			for(int indexA = 0, indexB = pos;
-				indexA < min;
-				indexA++, indexB++) {
-				contents[indexA] = block[indexB];
+			System.out.println(Arrays.toString(currentBlock));
+			System.out.println(Arrays.toString(contents));
+			
+			if(lastKey != firstKey + 1 || (pos + size) % BLOCK_LENGTH != 0) {
+				for (int index = firstKey + 1; index <= lastKey; index++) {
+					if(blockTable.containsKey((Integer) index)) {
+						currentBlock = blockServer.get(blockTable.remove(index)).getBytes();
+						min += BLOCK_LENGTH;
+					} else {
+						System.out.print("new block");
+						currentBlock = new byte[BLOCK_LENGTH];
+					}
+					
+					System.out.println("Pos: " + posContent);
+					posContent = extractContent(0, size, currentBlock, contents, posContent);
+	
+					System.out.println(Arrays.toString(currentBlock));
+					System.out.println(Arrays.toString(contents));
+				}
 			}
 
-			System.out.println(Arrays.toString(contents));
 			return min;
 		} catch (RemoteException |
 				 NotBoundException e) {
 			throw new FileSystemException("FS_write: " + e.getMessage());
 		}
 	}
-
-	public void test() {
-    	setSecurityParameters(); 		
-
-        try {	      	
-        	System.out.println("Found server");
-            byte[] aux = new byte[2];
-            aux[0] = (byte) 0;
-            aux[1] = (byte) 0;
-            
-            KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-            keyGen.initialize(1024);
-            KeyPair keys = keyGen.generateKeyPair();
-            
-            KeyBlock keyBlock = new KeyBlock(aux);
-            
-            SecureRandom secureRandom = new SecureRandom(aux);
-            Signature signature = Signature.getInstance("NONEwithRSA");
-            signature.initSign(keys.getPrivate(), secureRandom); //TODO: add random value
-    		signature.update(aux);
-    		EncodedSignature encodedSignature = new EncodedSignature(signature.sign());
-    		
-    		EncodedPublicKey encodedPublicKey = new EncodedPublicKey(keys.getPublic().getEncoded());
-    		
-    		HashBlock hashBlock = new HashBlock(aux);
-    		
-    		BlockId id;
-            id = getBlockServer().put_k(keyBlock, encodedSignature, encodedPublicKey);
-            getBlockServer().get(id);
-            
-            id = getBlockServer().put_h(hashBlock);
-            getBlockServer().get(id);
-        } catch(RemoteException e) {
-            System.out.println("BlockServer: " + e.getMessage());
-	    } catch(Exception e) {
-            System.out.println("Lookup: " + e.getMessage());
-        }
-    }
 }
