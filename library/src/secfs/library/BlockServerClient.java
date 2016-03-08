@@ -193,13 +193,13 @@ public class BlockServerClient extends RmiNode {
 			}
 
 			//Create key block
-			KeyBlock keyBlock = new KeyBlock(null, blockTable);
+			KeyBlock keyBlock = new KeyBlock(new byte[42], blockTable);
 		
 			//Create encoded signature
         	SecureRandom secureRandom = new SecureRandom(_publicKey.getEncoded());
         	Signature signature = Signature.getInstance("SHA512withRSA");
 			signature.initSign(_privateKey, secureRandom);
-			signature.update(_publicKey.getEncoded());
+			signature.update(keyBlock.getBytes());
 			EncodedSignature encodedSignature = new EncodedSignature(signature.sign());
 		
 			//Create encoded public key

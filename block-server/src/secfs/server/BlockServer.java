@@ -34,6 +34,7 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 	Map<BlockId, BlockId> _keyBlockIdTable;
 	
 	public BlockServer() throws RemoteException {
+		//Initialise tables
 		_dataBase = new HashMap<>();
 		_keyBlockIdTable = new HashMap<>();
     }
@@ -51,8 +52,9 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
   		System.out.println("Invoking get");				//TODO: Erase print
   		
   		//Check if block exists
+  		BlockId currentBlockId;
     	for (Map.Entry<BlockId, FileBlock> entry : _dataBase.entrySet()) {
-    		BlockId currentBlockId = entry.getKey();
+    		currentBlockId = entry.getKey();
     		if(currentBlockId.hashCode() == blockId.hashCode()) {
     			try {
     				BlockId newBlockId = createBlockId(entry.getValue().getBytes());
@@ -84,7 +86,7 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
         	//Verify signature
         	Signature signature = Signature.getInstance("SHA512withRSA");
         	signature.initVerify(pubKey);
-        	signature.update(encodedKey);
+        	signature.update(keyBlock.getBytes());
         	signature.verify(encodedSignature.getBytes());
         	
         	//Put key block into database using public key's hash
@@ -120,9 +122,7 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
         try {
         	//Put hash block into database using hash block's hash
         	BlockId blockId = createBlockId(hashBlock.getBytes());
-        	if(_dataBase.putIfAbsent(blockId, hashBlock) != null) {
-        		throw new RemoteException("SlotAlreadyFilledException");
-        	}
+        	_dataBase.putIfAbsent(blockId, hashBlock);
         	
         	//Return block id
 			return blockId;
