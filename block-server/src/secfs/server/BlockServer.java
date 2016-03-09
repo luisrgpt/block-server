@@ -11,16 +11,19 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
 import secfs.common.BlockId;
+import secfs.common.BlockNotFoundException;
 import secfs.common.EncodedPublicKey;
 import secfs.common.EncodedSignature;
 import secfs.common.FileBlock;
 import secfs.common.HashBlock;
 import secfs.common.IBlockServer;
 import secfs.common.KeyBlock;
+import secfs.common.TamperedBlockException;
 
 import java.lang.System;
 
@@ -48,7 +51,8 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
     	return new BlockId(hash);
   	}
 
-  	public FileBlock get(BlockId blockId) throws RemoteException {
+  	public FileBlock get(BlockId blockId)
+  			throws BlockNotFoundException, TamperedBlockException, RemoteException {
   		System.out.println("Invoking get");				//TODO: Erase print
   		
   		//Check if block exists
@@ -58,21 +62,29 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
     		if(currentBlockId.hashCode() == blockId.hashCode()) {
     			try {
     				BlockId newBlockId = createBlockId(entry.getValue().getBytes());
+    				System.out.println("Value: " + Arrays.toString(newBlockId.getBytes()));
+    				System.out.println("Key: " + Arrays.toString(entry.getKey().getBytes()));
+    				if (_keyBlockIdTable.get(currentBlockId) != null)
+    				System.out.println("Table: " + Arrays.toString(_keyBlockIdTable.get(currentBlockId).getBytes()));
+    				System.out.println("Returns: " + Arrays.toString(entry.getValue().getBytes()));
     				if(!entry.getKey().equals(newBlockId) &&
 					   (_keyBlockIdTable.get(currentBlockId) == null ||
 					    !_keyBlockIdTable.get(currentBlockId).equals(newBlockId))) {
-						throw new RemoteException("get: Block has been tampered");
+						throw new TamperedBlockException();
 					}
 					return entry.getValue();
 				} catch (NoSuchAlgorithmException e) {
+					//Not suppose to happen, even as an invalid state
+					System.out.println(e.getMessage());
+					System.exit(1);
 					throw new RemoteException("get: " + e.getMessage());
 				}
     		}
     	}
   		
-  		throw new RemoteException("get: EmptySlotException");
-     }
-  	
+  		throw new BlockNotFoundException();
+    }
+
    	public BlockId put_k(KeyBlock keyBlock, EncodedSignature encodedSignature, EncodedPublicKey encodedPublicKey)
    			throws RemoteException {
         System.out.println("Invoking put_k");
@@ -82,13 +94,13 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
         	X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(encodedKey);
         	KeyFactory keyFactory = KeyFactory.getInstance("RSA");
         	PublicKey pubKey = keyFactory.generatePublic(pubKeySpec);
-        	
+
         	//Verify signature
         	Signature signature = Signature.getInstance("SHA512withRSA");
         	signature.initVerify(pubKey);
         	signature.update(keyBlock.getBytes());
         	signature.verify(encodedSignature.getBytes());
-        	
+
         	//Put key block into database using public key's hash
         	BlockId blockId = createBlockId(encodedPublicKey.getBytes());
         	boolean blockExists = false;
@@ -105,12 +117,19 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
         	//Else put block into new slot
         	if(!blockExists) {
         		_dataBase.put(blockId, keyBlock);
+        		_keyBlockIdTable.put(blockId, createBlockId(keyBlock.getBytes()));
         	}
-			
+
+        	System.out.println(Arrays.toString(keyBlock.getBytes()));
+
         	//Return block id
 			return blockId;
-		} catch (NoSuchAlgorithmException |
-				 InvalidKeySpecException |
+		} catch (NoSuchAlgorithmException e) {
+			//Not suppose to happen, even as an invalid state
+			System.out.println(e.getMessage());
+			System.exit(1);
+			throw new RemoteException("put_k: " + e.getMessage());
+		} catch (InvalidKeySpecException |
 				 InvalidKeyException |
 				 SignatureException e) {
 			throw new RemoteException("put_k: " + e.getMessage());
@@ -122,12 +141,27 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
         try {
         	//Put hash block into database using hash block's hash
         	BlockId blockId = createBlockId(hashBlock.getBytes());
-        	_dataBase.putIfAbsent(blockId, hashBlock);
+        	boolean blockExists = false;
+        	
+      		//Replace block if block exists
+        	for (Map.Entry<BlockId, FileBlock> entry : _dataBase.entrySet()) {
+        		if(entry.getKey().hashCode() == blockId.hashCode()) {
+        			blockExists = true;
+        			break;
+        		}
+        	}
+        	//Else put block into new slot
+        	if(!blockExists) {
+        		_dataBase.put(blockId, hashBlock);
+        	}
         	
         	//Return block id
 			return blockId;
 		} catch (NoSuchAlgorithmException e) {
-			throw new RemoteException("NoSuchAlgorithmException");
+			//Not suppose to happen, even as an invalid state
+			System.out.println(e.getMessage());
+			System.exit(1);
+			throw new RemoteException("put_h: " + e.getMessage());
 		}
     }
 }

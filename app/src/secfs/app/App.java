@@ -6,25 +6,18 @@ import secfs.library.FileSystemException;
 public class App {
 
 	public static void main(String[] args) {
-        byte[] aux = new byte[10],
+        byte[] aux = "potatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotato".getBytes(),
         	   id,
         	   aux2 = new byte[10];
         int size;
-        aux[0] = (byte) 8;
-        aux[1] = (byte) 0;
-        aux[2] = (byte) 0;
-        aux[3] = (byte) 8;
-        aux[4] = (byte) 5;
-        aux[5] = (byte) 8;
-        aux[6] = (byte) 0;
-        aux[7] = (byte) 0;
-        aux[8] = (byte) 8;
-        aux[9] = (byte) 5;
 		
 		BlockServerClient client = new BlockServerClient();
 		try {
 			id = client.FS_init();
-			client.FS_write(21, 10, aux);
+			//client.test();
+			//System.exit(1);
+			client.FS_write(21, aux.length, aux);
+			client.FS_write(21, aux.length, aux);
 			size = client.FS_read(id, 21, 10, aux2);
 			System.out.println(size);
 			//client.FS_write(2, 5, aux);
