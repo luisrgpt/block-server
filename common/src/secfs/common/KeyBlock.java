@@ -1,7 +1,6 @@
 package secfs.common;
 
 import java.io.Serializable;
-import java.util.Map;
 
 public final class KeyBlock extends FileBlock implements Serializable {
 	/**
