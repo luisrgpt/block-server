@@ -14,6 +14,7 @@ import secfs.common.HashBlock;
 import secfs.common.IBlockServer;
 import secfs.common.EncodedPublicKey;
 import secfs.common.EncodedSignature;
+import secfs.common.FileBlock;
 
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
@@ -51,6 +52,7 @@ public class BlockServerClient extends RmiNode {
 	private IBlockServer getBlockServer()
 			throws RemoteException, NotBoundException {
 		if (_blockServer == null) {
+			//Bind a RMI connection to BlockServer
 			Registry registry;
 			registry = LocateRegistry.getRegistry();
 			_blockServer = (IBlockServer)registry.lookup(IBlockServer.SERVICE_NAME);
@@ -65,40 +67,73 @@ public class BlockServerClient extends RmiNode {
 			if(_blockTable != null) {
 				return _blockTable;
 			}
+			
 			_blockTable = new HashMap<>();
 			
-			System.out.println("ID: " + Arrays.toString(_fileId.getBytes()));
+			System.out.println("[getBlockTable] ID: " + Arrays.toString(_fileId.getBytes()));
 			byte[] block = getBlockServer().get(_fileId).getBytes();
 			
-			System.out.println("Returned: " + Arrays.toString(block));
+			System.out.println("[getBlockTable] Returned: " + Arrays.toString(block));
 			
 			BlockId nullPointer = new BlockId(new byte[64]);
 			_blockTable.putAll(getBlockTable(block));
 			
 			while(!_blockTable.get(-1).equals(nullPointer)) {
-				System.out.println("IdTable2");
+				System.out.println("[getBlockTable] IdTable2");
 				for (Map.Entry<Integer, BlockId> entry : _blockTable.entrySet()) {
-					System.out.println(entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
+					System.out.println("[getBlockTable] "+entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
 				}
 				System.out.println();
 				block = getBlockServer().get(_blockTable.get(-1)).getBytes();
 				_blockTable.remove(-1);
-				System.out.println("Returned2: " + Arrays.toString(block));
+				System.out.println("[getBlockTable] Returned2: " + Arrays.toString(block));
 				_blockTable.putAll(getBlockTable(block));
 			}
 			_blockTable.remove(-1);
-			System.out.println("IdTable2");
+			System.out.println("[getBlockTable] IdTable2");
 			for (Map.Entry<Integer, BlockId> entry : _blockTable.entrySet()) {
-				System.out.println(entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
+				System.out.println("[getBlockTable] " +entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
 			}
 			System.out.println();
 			
 			return _blockTable;
 		} catch (BlockNotFoundException e) {
-			System.out.println("Creating new file");
+			System.out.println("[getBlockTable] Block not found -> Creating new file");
 			return new HashMap<>();
 		}
 	}
+	
+	//only applicable to hash blocks
+  	private FileBlock getAndVerify(BlockId blockId) throws NoSuchAlgorithmException, TamperedBlockException{
+  		FileBlock block= null;
+		try {
+			block = getBlockServer().get(blockId);
+		} catch (RemoteException | BlockNotFoundException | TamperedBlockException | NotBoundException e ) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+  		
+    	//Create block id using block's hash
+    	MessageDigest messageDigest;
+		messageDigest = MessageDigest.getInstance("SHA-512");
+		try{
+			messageDigest.update(block.getBytes());
+		}catch( NullPointerException e){
+			System.out.println("Could not get the block bytes");
+		}
+		
+    	byte[] hash = messageDigest.digest();
+    	
+    	if(Arrays.equals(hash, blockId.getBytes())){
+    		//then return block
+    		return block;
+    		
+    	}else{
+    		//else throw exception
+    		throw new TamperedBlockException();
+    	}
+    	
+  	}
 	
   	private byte[] getBytes(int i) {
 		ByteBuffer dbuf = ByteBuffer.allocate(4);
@@ -125,7 +160,7 @@ public class BlockServerClient extends RmiNode {
 			System.arraycopy(getBytes(key), 0, block, 4 + 68*index, 4);
 			System.arraycopy(blockId, 0, block, 4 + 68*index + 4, 64);
 		}
-		System.out.println(Arrays.toString(block));
+		System.out.println("[getBytes] content: "+ Arrays.toString(block));
 		
 		return block;
   	}
@@ -136,7 +171,6 @@ public class BlockServerClient extends RmiNode {
 		byte[] sizeArray = new byte[4];
 		System.arraycopy(array, 0, sizeArray, 0, 4);
 		_bytesRead += 4;
-		System.out.println("alsjflasjfsdkf");
 
 		int size = getInt(sizeArray);
 		byte[] keyArray = new byte[4], blockId = new byte[64];
@@ -151,7 +185,7 @@ public class BlockServerClient extends RmiNode {
 		
 		System.out.println("IdTable2");
 		for (Map.Entry<Integer, BlockId> entry : blockTable.entrySet()) {
-			System.out.println(entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
+			System.out.println("[getBlockTable] "+entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
 		}
 		System.out.println();
 		
@@ -168,7 +202,7 @@ public class BlockServerClient extends RmiNode {
 		if(size < mapSize) {
 			int blockSize = (int) Math.ceil((double) mapSize / size),
 				firstKey, lastKey;
-			System.out.println("blockSize = " + blockSize +
+			System.out.println("[sendIndexBlocks] blockSize = " + blockSize +
 					" size = " + size + 
 					" mapSize = " + mapSize);
 			List<Integer> keyList = new ArrayList<Integer>(map.keySet());
@@ -184,11 +218,11 @@ public class BlockServerClient extends RmiNode {
 				valueSubList.add(blockId);
 				
 				for (Integer entry : keySubList) {
-					System.out.println(entry);
+					System.out.println("[sendindexBlocks] keySublist: "+entry);
 				}
 				
 				for (BlockId entry : valueSubList) {
-					System.out.println(Arrays.toString(entry.getBytes()));
+					System.out.println("[sendindexBlocks] valueSubList: "+Arrays.toString(entry.getBytes()));
 				}
 				
 				byte[] array = getBytes(keySubList, valueSubList);
@@ -218,10 +252,10 @@ public class BlockServerClient extends RmiNode {
 	@SuppressWarnings("unused")
 	public byte[] FS_init()
 			throws FileSystemException {
-		System.out.println("Invoking FS_init");
+		//System.out.println("Invoking FS_init");
 		
 		if(BLOCK_LENGTH < 140) {
-			throw new FileSystemException("FS_init: Block size is too small (< 140).");
+			throw new FileSystemException("[FS_init]: Block size is too small (< 140).");
 		}
 
 		try {
@@ -242,7 +276,7 @@ public class BlockServerClient extends RmiNode {
 	
 			return _fileId.getBytes();
 		} catch (NoSuchAlgorithmException e) {
-			throw new FileSystemException("FS_write: " + e.getMessage());
+			throw new FileSystemException("[FS_write]: " + e.getMessage());
 		}
 	}
 	
@@ -278,7 +312,7 @@ public class BlockServerClient extends RmiNode {
 	private void checkSize(int size, byte[] contents)
 			throws FileSystemException {
 		if (contents.length != size) {
-			throw new FileSystemException("FS_write: Size doesnt't match contents' size.");
+			throw new FileSystemException("[FS_write]: Size doesnt't match contents' size.");
 		}
 	}
 	
@@ -312,17 +346,17 @@ public class BlockServerClient extends RmiNode {
 			    posContent = 0;
 
 			if(blockTable.containsKey((Integer) firstKey)) {
-				currentBlock = blockServer.get(blockTable.remove(firstKey)).getBytes();
+				currentBlock = blockServer.get(blockTable.remove(firstKey)).getBytes(); //nao substituir
 			} else {
 				currentBlock = new byte[BLOCK_LENGTH];
 			}
 
 			posContent = copyContent(pos % BLOCK_LENGTH, size, currentBlock, contents, posContent);
 
-			System.out.println(Arrays.toString(currentBlock));
+			System.out.println("[FS_Write] new content: "+Arrays.toString(currentBlock));
 			blockList.add(currentBlock);
 
-			System.out.println("FirstKey: " + firstKey + "; LastKey: " + lastKey);
+			System.out.println("[FS_Write] FirstKey: " + firstKey + "; LastKey: " + lastKey);
 			if(lastKey != firstKey + 1 || (pos + size) % BLOCK_LENGTH != 0) {
 				for (int index = firstKey + 1; index <= lastKey; index++) {
 					if(blockTable.containsKey((Integer) index)) {
@@ -336,10 +370,10 @@ public class BlockServerClient extends RmiNode {
 						currentBlock = new byte[BLOCK_LENGTH];
 					}
 					
-					System.out.println("Pos: " + posContent + "; index: " + index + "; size: " + size);
+					System.out.println("[FS_Write] Pos: " + posContent + "; index: " + index + "; size: " + size);
 					posContent = copyContent(0, size, currentBlock, contents, posContent);
 	
-					System.out.println(Arrays.toString(currentBlock));
+					System.out.println("[FS_Write] "+Arrays.toString(currentBlock));
 					blockList.add(currentBlock);
 				}
 			}
@@ -360,12 +394,12 @@ public class BlockServerClient extends RmiNode {
 				 SignatureException |
 				 BlockNotFoundException |
 				 TamperedBlockException e)  {
-			throw new FileSystemException("FS_write: " + e.getMessage());
+			throw new FileSystemException("[FS_write]: " + e.getMessage());
 		}
 	}
 
 	public int FS_read(byte[] id, int pos, int size, byte[] contents)
-			throws FileSystemException {
+			throws FileSystemException, NoSuchAlgorithmException {
 		//Throws FileSystemException
 		checkSize(size, contents);
 
@@ -380,20 +414,20 @@ public class BlockServerClient extends RmiNode {
 			    posContent = 0;
 			
 			if(blockTable.containsKey((Integer) firstKey)) {
-				currentBlock = blockServer.get(blockTable.remove(firstKey)).getBytes();
+				currentBlock = getAndVerify(blockTable.remove(firstKey)).getBytes();
 			} else {
 				currentBlock = new byte[BLOCK_LENGTH];
 			}
 			
 			posContent = extractContent(pos % BLOCK_LENGTH, size, currentBlock, contents, posContent);
 
-			System.out.println(Arrays.toString(currentBlock));
-			System.out.println(Arrays.toString(contents));
+			System.out.println("[FS_Read]: "+Arrays.toString(currentBlock));
+			System.out.println("[FS_Read]: "+Arrays.toString(contents));
 			
 			if(lastKey != firstKey + 1 || (pos + size) % BLOCK_LENGTH != 0) {
 				for (int index = firstKey + 1; index <= lastKey; index++) {
 					if(blockTable.containsKey((Integer) index)) {
-						currentBlock = blockServer.get(blockTable.remove(index)).getBytes();
+						currentBlock = getAndVerify(blockTable.remove(firstKey)).getBytes();
 					} else {
 						System.out.print("new block");
 						currentBlock = new byte[BLOCK_LENGTH];
@@ -410,7 +444,6 @@ public class BlockServerClient extends RmiNode {
 			return _bytesRead;
 		} catch (RemoteException |
 				 NotBoundException |
-				 BlockNotFoundException |
 				 TamperedBlockException e) {
 			throw new FileSystemException("FS_write: " + e.getMessage());
 		}
