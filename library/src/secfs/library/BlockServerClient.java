@@ -20,6 +20,7 @@ import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.spec.InvalidKeySpecException;
 import java.lang.Math;
 import java.nio.ByteBuffer;
 import java.util.List;
@@ -65,17 +66,12 @@ public class BlockServerClient extends RmiNode {
 	}
 
 	private Map<Integer, BlockId> getBlockTable()
-			throws NotBoundException, TamperedBlockException, RemoteException {
+			throws NotBoundException, TamperedBlockException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		try {
-			//Assuming that there is only one client per user
-			if(_blockTable != null) {
-				return _blockTable;
-			}
-			
 			_blockTable = new HashMap<>();
 			
 			System.out.println("[getBlockTable] ID: " + Arrays.toString(_fileId.getBytes()));
-			byte[] block = getBlockServer().get(_fileId).getBytes();
+			byte[] block = getAndVerifyKeyBlock().getBytes();
 			
 			System.out.println("[getBlockTable] Returned: " + Arrays.toString(block));
 			
@@ -108,14 +104,9 @@ public class BlockServerClient extends RmiNode {
 	}
 	
 	//only applicable to hash blocks
-  	private FileBlock getAndVerify(BlockId blockId, BlockId prevBlockId) throws NoSuchAlgorithmException, TamperedBlockException{
-  		FileBlock block= null;
-		try {
-			block = getBlockServer().get(blockId);
-		} catch (RemoteException | BlockNotFoundException | TamperedBlockException | NotBoundException e ) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+  	private FileBlock getAndVerifyHashBlock(BlockId blockId, BlockId prevBlockId)
+  			throws NoSuchAlgorithmException, TamperedBlockException, RemoteException, BlockNotFoundException, NotBoundException{
+  		FileBlock block = getBlockServer().get(blockId);
   		
     	//Create block id using block's hash
     	MessageDigest messageDigest;
@@ -131,12 +122,35 @@ public class BlockServerClient extends RmiNode {
     	if(Arrays.equals(hash, prevBlockId.getBytes()) || _previousBlockTable.isEmpty()){
     		//then return block
     		return block;
-    		
     	}else{
     		//else throw exception
     		throw new TamperedBlockException();
     	}
     	
+  	}
+  	
+	//only applicable to hash blocks
+  	private FileBlock getAndVerifyKeyBlock()
+  			throws NoSuchAlgorithmException, TamperedBlockException, InvalidKeyException, SignatureException, RemoteException, BlockNotFoundException, NotBoundException{
+  		FileBlock block = getBlockServer().get(_fileId);
+		
+		byte[] data = new byte[BLOCK_LENGTH],
+			   signatureData = new byte[block.getBytes().length - BLOCK_LENGTH];
+  		
+		System.arraycopy(block.getBytes(), 0, data, 0, BLOCK_LENGTH);
+		System.arraycopy(block.getBytes(), BLOCK_LENGTH, signatureData, 0, signatureData.length);
+    
+    	//Verify signature
+    	Signature signature = Signature.getInstance("SHA512withRSA");
+    	signature.initVerify(_publicKey);
+    	signature.update(data);
+    	if(signature.verify(signatureData)){
+    		//then return block
+    		return block;
+    	}else{
+    		//else throw exception
+    		throw new TamperedBlockException();
+    	}
   	}
 	
   	private byte[] getBytes(int i) {
@@ -197,13 +211,13 @@ public class BlockServerClient extends RmiNode {
   	}
   	
   	private void sendIndexBlocks(Map<Integer, BlockId> map)
-  			throws RemoteException, NotBoundException, NoSuchAlgorithmException, InvalidKeyException, SignatureException {
+  			throws RemoteException, NotBoundException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, InvalidKeySpecException, TamperedBlockException {
 		IBlockServer blockServer = getBlockServer();
   		
   		int size = (int) Math.floor((double) (BLOCK_LENGTH - 4) / 68) - 1,
 				mapSize = map.size();
 		BlockId blockId = new BlockId(new byte[64]);
-		if(size < mapSize) {
+		//if(size < mapSize) {
 			int blockSize = (int) Math.ceil((double) mapSize / size),
 				firstKey, lastKey;
 			System.out.println("[sendIndexBlocks] blockSize = " + blockSize +
@@ -269,7 +283,7 @@ public class BlockServerClient extends RmiNode {
 				
 				System.out.println();
 			}
-		}
+		//}
   	}
 	
 	@SuppressWarnings("unused")
@@ -335,7 +349,14 @@ public class BlockServerClient extends RmiNode {
 	private void checkSize(int size, byte[] contents)
 			throws FileSystemException {
 		if (contents.length != size) {
-			throw new FileSystemException("[FS_write]: Size doesnt't match contents' size.");
+			throw new FileSystemException("Size doesnt't match contents' size.");
+		}
+	}
+	
+	private void checkInit()
+			throws FileSystemException {
+		if (_fileId == null) {
+			throw new FileSystemException("File system not initialized.");
 		}
 	}
 	
@@ -357,6 +378,7 @@ public class BlockServerClient extends RmiNode {
 		
 		//Throws FileSystemException
 		checkSize(size, contents);
+		checkInit();
 		if(_previousBlockTable==null){
 			_previousBlockTable = new HashMap<>();
 		}
@@ -385,12 +407,7 @@ public class BlockServerClient extends RmiNode {
 			if(lastKey != firstKey + 1 || (pos + size) % BLOCK_LENGTH != 0) {
 				for (int index = firstKey + 1; index <= lastKey; index++) {
 					if(blockTable.containsKey((Integer) index)) {
-						try {
-							currentBlock = getAndVerify(blockTable.remove(index),_previousBlockTable.remove(index)).getBytes();
-						} catch (TamperedBlockException e) {
-							// TODO Auto-generated catch block
-							e.printStackTrace();
-						}
+						currentBlock = getAndVerifyHashBlock(blockTable.remove(index),_previousBlockTable.remove(index)).getBytes();
 					} else {
 						currentBlock = new byte[BLOCK_LENGTH];
 					}
@@ -419,15 +436,17 @@ public class BlockServerClient extends RmiNode {
 				 InvalidKeyException |
 				 SignatureException |
 				 BlockNotFoundException |
-				 TamperedBlockException e)  {
+				 TamperedBlockException |
+				 InvalidKeySpecException e)  {
 			throw new FileSystemException("[FS_write]: " + e.getMessage());
 		}
 	}
 
 	public int FS_read(byte[] id, int pos, int size, byte[] contents)
-			throws FileSystemException, NoSuchAlgorithmException {
+			throws FileSystemException {
 		//Throws FileSystemException
 		checkSize(size, contents);
+		checkInit();
 
 		_bytesRead = 0;
 		try {
@@ -457,7 +476,7 @@ public class BlockServerClient extends RmiNode {
 			if(lastKey != firstKey + 1 || (pos + size) % BLOCK_LENGTH != 0) {
 				for (int index = firstKey + 1; index <= lastKey; index++) {
 					if(blockTable.containsKey((Integer) index)) {
-						currentBlock = getAndVerify(blockTable.remove(index), _previousBlockTable.get(index)).getBytes();
+						currentBlock = getAndVerifyHashBlock(blockTable.remove(index), _previousBlockTable.get(index)).getBytes();
 					} else {
 						System.out.print("new block");
 						currentBlock = new byte[BLOCK_LENGTH];
@@ -474,6 +493,10 @@ public class BlockServerClient extends RmiNode {
 			return _bytesRead;
 		} catch (RemoteException |
 				 NotBoundException |
+				 BlockNotFoundException |
+				 NoSuchAlgorithmException |
+				 InvalidKeyException |
+				 SignatureException |
 				 TamperedBlockException e) {
 			throw new FileSystemException("FS_write: " + e.getMessage());
 		}
@@ -490,49 +513,7 @@ public class BlockServerClient extends RmiNode {
   	
   	
   	
-  	
-	
-  	private BlockId createBlockId() throws NoSuchAlgorithmException{
-        byte[] aux = new byte[10];
-         aux[0] = (byte) 8;
-         aux[1] = (byte) 0;
-         aux[2] = (byte) 0;
-         aux[3] = (byte) 8;
-         aux[4] = (byte) 5;
-         aux[5] = (byte) 8;
-         aux[6] = (byte) 0;
-         aux[7] = (byte) 0;
-         aux[8] = (byte) 8;
-         aux[9] = (byte) 5;
-  		
-  		//Create block id using block's hash
-    	MessageDigest messageDigest;
-		messageDigest = MessageDigest.getInstance("SHA-512");
-    	messageDigest.update(aux);
-    	byte[] hash = messageDigest.digest();
-    	return new BlockId(hash);
-  	}
-  	
-	public void test () {
-		try {
-			Map<Integer, BlockId> test = new HashMap<>();
-		
-			test.put((Integer) 1, createBlockId());
-			test.put((Integer) 2, createBlockId());
-			test.put((Integer) 3, createBlockId());
-			test.put((Integer) 4, createBlockId());
-			test.put((Integer) 5, createBlockId());
-			
-			sendIndexBlocks(test);
-			getBlockTable();
-
-		} catch (Exception e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-	}
-	
+  	//Testing methods
 	public void tamperAttack(){
 		this.tamperAttack=true;
 	}
