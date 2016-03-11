@@ -14,6 +14,7 @@ import java.security.spec.X509EncodedKeySpec;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Random;
 
 import secfs.common.BlockId;
 import secfs.common.BlockNotFoundException;
@@ -33,8 +34,8 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 	 */
 	private static final long serialVersionUID = -7081463307932455315L;
 
-	private boolean serverUnderAttack= false;
-	private boolean canAttack=true;
+	private boolean serverUnderAttack= true;
+	private boolean canAttack=false;
 	
 	Map<BlockId, FileBlock> _dataBase;
 	Map<BlockId, BlockId> _keyBlockIdTable;
@@ -78,7 +79,10 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
     				
     				if(serverUnderAttack && canAttack){
     					serverUnderAttack=false;
-    					return new FileBlock("U were attacked".getBytes());
+    					int size = entry.getValue().getBytes().length;
+    					byte[] fakeData = new byte[size];
+    					new Random().nextBytes(fakeData);
+    					return new FileBlock(fakeData);
     				}
 					return entry.getValue();
 				} catch (NoSuchAlgorithmException e) {
@@ -108,6 +112,7 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
         	signature.initVerify(pubKey);
         	signature.update(keyBlock.getBytes());
         	if(!signature.verify(encodedSignature.getBytes())){
+        		serverAttack();
         		System.out.println("Verification failled!");
         		throw new TamperedBlockException();
         	}
@@ -178,6 +183,6 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
     }
     
     public void serverAttack(){
-    	serverUnderAttack=true;
+    	canAttack=true;
     }
 }

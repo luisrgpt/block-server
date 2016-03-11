@@ -20,10 +20,9 @@ public class BlockServerStarter extends RmiNode {
             IBlockServer blockServer = new BlockServer();
             System.out.println("After create");
             
-            System.out.println("Test7: The server will change the content of some block");
-            System.out.println("Test7: The client when retrieves that block should reject it");
             
-
+            
+            
             Registry reg = LocateRegistry.createRegistry(REGISTRY_PORT);
 			reg.rebind(IBlockServer.SERVICE_NAME, blockServer);
 

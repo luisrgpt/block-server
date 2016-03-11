@@ -95,17 +95,30 @@ public class App {
 			}
 			
 			
-			//TEST6
+			
+			
+		   //TEST6
+		   System.out.println("Test7: The server will change the content of some block");
+           System.out.println("Test7: The client when retrieves that block should reject it");
+           try{
+				client.FS_write(200, buffer.length, buffer);
+				client.FS_read(id, 200, aux3.length, aux3);
+				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Failed!");
+			} catch (FileSystemException e) {
+				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Passed!");
+			} 
+            
+          //TEST7
 			System.out.println("Test6: Impersonation by changing the publicKey of the put_k to someone's else : ");
 			try{
 				client.impersonationAttack();
 				client.FS_write(100, buffer.length, buffer);
 				client.FS_read(id, 100, aux3.length, aux3);
-				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Failed!");
+				System.out.println(">>>>>>>>>>>>>>>>>>Test7 Failed!");
 			} catch (FileSystemException e) {
-				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Passed!");
+				System.out.println(">>>>>>>>>>>>>>>>>>Test7 Passed!");
 			}
-			
+            
 			/*client.FS_write(21, aux.length, aux);
 			client.FS_write(21, aux.length, aux);
 			size = client.FS_read(id, 21, 10, aux2);
