@@ -35,6 +35,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
 public class BlockServerClient extends RmiNode {
+	
+	private boolean tamperAttack=false;
+	private boolean impersonate=false;
 
 	//Block minimal size ->  4 (64 + 4)*2 = 140 bytes
 	private static final int BLOCK_LENGTH = 300;
@@ -45,7 +48,8 @@ public class BlockServerClient extends RmiNode {
 	private PublicKey _publicKey;
 	private PrivateKey _privateKey;
 
-	private Map<Integer, BlockId> _blockTable = null;
+	private Map<Integer, BlockId> _blockTable = new HashMap<>();
+	private Map<Integer, BlockId> _previousBlockTable = null; //Check integrity in the client side
 	
 	private int _bytesRead = 0;
 
@@ -104,7 +108,7 @@ public class BlockServerClient extends RmiNode {
 	}
 	
 	//only applicable to hash blocks
-  	private FileBlock getAndVerify(BlockId blockId) throws NoSuchAlgorithmException, TamperedBlockException{
+  	private FileBlock getAndVerify(BlockId blockId, BlockId prevBlockId) throws NoSuchAlgorithmException, TamperedBlockException{
   		FileBlock block= null;
 		try {
 			block = getBlockServer().get(blockId);
@@ -123,8 +127,8 @@ public class BlockServerClient extends RmiNode {
 		}
 		
     	byte[] hash = messageDigest.digest();
-    	
-    	if(Arrays.equals(hash, blockId.getBytes())){
+    
+    	if(Arrays.equals(hash, prevBlockId.getBytes()) || _previousBlockTable.isEmpty()){
     		//then return block
     		return block;
     		
@@ -166,7 +170,7 @@ public class BlockServerClient extends RmiNode {
   	}
   	
   	private Map<Integer, BlockId> getBlockTable(byte[] array) {
-  		System.out.println("That's strange: " + Arrays.toString(array));
+  		//System.out.println("That's strange: " + Arrays.toString(array));
 		Map<Integer, BlockId> blockTable = new HashMap<>();
 		byte[] sizeArray = new byte[4];
 		System.arraycopy(array, 0, sizeArray, 0, 4);
@@ -241,6 +245,25 @@ public class BlockServerClient extends RmiNode {
 				
 					//Create encoded public key
 					EncodedPublicKey encodedPublicKey = new EncodedPublicKey(_publicKey.getEncoded());
+					if(tamperAttack){
+						//After generate the signature with the data we should change the block content
+						System.out.println("Tampering data...");
+						keyBlock = new KeyBlock("U were cracked!".getBytes());
+						tamperAttack=false;
+					}
+					
+					if(impersonate){
+						System.out.println("Changing public key...");
+						KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+						keyGen.initialize(1024);
+						KeyPair keys = keyGen.generateKeyPair();
+				
+						//Set key pair state
+						EncodedPublicKey fakeEncodedPublicKey = new EncodedPublicKey(keys.getPublic().getEncoded());
+						encodedPublicKey = fakeEncodedPublicKey;
+						impersonate=false;
+					}
+					
 					blockServer.put_k(keyBlock, encodedSignature, encodedPublicKey);
 				}
 				
@@ -334,7 +357,9 @@ public class BlockServerClient extends RmiNode {
 		
 		//Throws FileSystemException
 		checkSize(size, contents);
-
+		if(_previousBlockTable==null){
+			_previousBlockTable = new HashMap<>();
+		}
 		try {
 			IBlockServer blockServer = getBlockServer();
 			Map<Integer, BlockId> blockTable = getBlockTable();
@@ -346,11 +371,11 @@ public class BlockServerClient extends RmiNode {
 			    posContent = 0;
 
 			if(blockTable.containsKey((Integer) firstKey)) {
-				currentBlock = blockServer.get(blockTable.remove(firstKey)).getBytes(); //nao substituir
+				currentBlock = blockServer.get(blockTable.remove(firstKey)).getBytes(); 
 			} else {
 				currentBlock = new byte[BLOCK_LENGTH];
 			}
-
+			
 			posContent = copyContent(pos % BLOCK_LENGTH, size, currentBlock, contents, posContent);
 
 			System.out.println("[FS_Write] new content: "+Arrays.toString(currentBlock));
@@ -361,8 +386,8 @@ public class BlockServerClient extends RmiNode {
 				for (int index = firstKey + 1; index <= lastKey; index++) {
 					if(blockTable.containsKey((Integer) index)) {
 						try {
-							currentBlock = blockServer.get(blockTable.remove(index)).getBytes();
-						} catch (BlockNotFoundException | TamperedBlockException e) {
+							currentBlock = getAndVerify(blockTable.remove(index),_previousBlockTable.remove(index)).getBytes();
+						} catch (TamperedBlockException e) {
 							// TODO Auto-generated catch block
 							e.printStackTrace();
 						}
@@ -383,6 +408,7 @@ public class BlockServerClient extends RmiNode {
 			for(byte[] block : blockList) {
 				blockId = blockServer.put_h(new HashBlock(block));
 				blockTable.put((Integer) index, blockId);
+				_previousBlockTable.put((Integer) index, blockId);
 				index++;
 			}
 
@@ -414,7 +440,11 @@ public class BlockServerClient extends RmiNode {
 			    posContent = 0;
 			
 			if(blockTable.containsKey((Integer) firstKey)) {
-				currentBlock = getAndVerify(blockTable.remove(firstKey)).getBytes();
+				try{
+					currentBlock = blockServer.get(blockTable.remove(firstKey)).getBytes();
+				}catch(BlockNotFoundException e){
+					throw new FileSystemException(null);
+				}
 			} else {
 				currentBlock = new byte[BLOCK_LENGTH];
 			}
@@ -427,7 +457,7 @@ public class BlockServerClient extends RmiNode {
 			if(lastKey != firstKey + 1 || (pos + size) % BLOCK_LENGTH != 0) {
 				for (int index = firstKey + 1; index <= lastKey; index++) {
 					if(blockTable.containsKey((Integer) index)) {
-						currentBlock = getAndVerify(blockTable.remove(firstKey)).getBytes();
+						currentBlock = getAndVerify(blockTable.remove(index), _previousBlockTable.get(index)).getBytes();
 					} else {
 						System.out.print("new block");
 						currentBlock = new byte[BLOCK_LENGTH];
@@ -501,5 +531,13 @@ public class BlockServerClient extends RmiNode {
 			e.printStackTrace();
 		}
 		
+	}
+	
+	public void tamperAttack(){
+		this.tamperAttack=true;
+	}
+	
+	public void impersonationAttack(){
+		this.impersonate = true;
 	}
 }

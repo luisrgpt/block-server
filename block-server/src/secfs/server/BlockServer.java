@@ -99,7 +99,10 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
         	Signature signature = Signature.getInstance("SHA512withRSA");
         	signature.initVerify(pubKey);
         	signature.update(keyBlock.getBytes());
-        	signature.verify(encodedSignature.getBytes());
+        	if(!signature.verify(encodedSignature.getBytes())){
+        		System.out.println("Verification failled!");
+        	}
+        	
 
         	//Put key block into database using public key's hash
         	BlockId blockId = createBlockId(encodedPublicKey.getBytes());
