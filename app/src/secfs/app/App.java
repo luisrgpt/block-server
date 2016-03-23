@@ -19,7 +19,9 @@ public class App {
         	   id,
         	   aux2 = new byte[10];
         int size=0;
-		
+		int testsPassed=0;
+		int totalTestsMade=0;
+        
 		BlockServerClient client = new BlockServerClient();
 		
 		try {
@@ -38,7 +40,9 @@ public class App {
 				System.out.println(">>>>>>>>>>>>>>Test1 - Failed!");
 			}catch(ArrayIndexOutOfBoundsException e){
 				System.out.println(">>>>>>>>>>>>>>Test1 - Passed!");
+				testsPassed++;
 			}
+			totalTestsMade++;
 			//TEST2
 			System.out.println("Test2: Writting in valid position: pos==20");
 			
@@ -47,9 +51,11 @@ public class App {
 			
 			if (Arrays.equals(buffer, aux3)){
 				System.out.println(">>>>>>>>>>>>>>>Test2 - Passed!");
+				testsPassed++;
 			}else{
 				System.out.println(">>>>>>>>>>>>>>>Test2 - Failed!");
 			}
+			totalTestsMade++;
 			
 			//TEST3
 			System.out.println("Test3: Test data overwriting : ");
@@ -66,10 +72,11 @@ public class App {
 			
 			if (Arrays.equals(buffer, aux3)){
 				System.out.println(">>>>>>>>>>>>>>>>>>>>Test3 - Passed!");
+				testsPassed++;
 			}else{
 				System.out.println(">>>>>>>>>>>>>>>>>>>Test3 - Failed!");
 			}
-			
+			totalTestsMade++;
 			//TEST4 
 			System.out.println("Test4: Test reading from uncreated blocks: ");
 			size = client.FS_read(id, 200, aux3.length, aux3);
@@ -77,9 +84,11 @@ public class App {
 			
 			if(Arrays.equals(aux3, new byte[aux3.length])){
 				System.out.println(">>>>>>>>>>>>>>>>>>Test4 - Passed!");
+				testsPassed++;
 			}else{
 				System.out.println(">>>>>>>>>>>>>>>>>>Test4 - Failed!");
 			}
+			totalTestsMade++;
 			
 			System.out.println(">>>>>>>>Security Tests<<<<<<<<<");
 			
@@ -92,7 +101,10 @@ public class App {
 				System.out.println(">>>>>>>>>>>>>>>>>>Test5 Failed!");
 			}catch(FileSystemException e){
 				System.out.println(">>>>>>>>>>>>>>>>>>Test5 Passed!");
+				testsPassed++;
 			}
+			
+			totalTestsMade++;
 			
 			
 			
@@ -106,8 +118,10 @@ public class App {
 				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Failed!");
 			} catch (FileSystemException e) {
 				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Passed!");
+				testsPassed++;
 			} 
             
+           totalTestsMade++;
           //TEST7
 			System.out.println("Test6: Impersonation by changing the publicKey of the put_k to someone's else : ");
 			try{
@@ -117,8 +131,11 @@ public class App {
 				System.out.println(">>>>>>>>>>>>>>>>>>Test7 Failed!");
 			} catch (FileSystemException e) {
 				System.out.println(">>>>>>>>>>>>>>>>>>Test7 Passed!");
+				testsPassed++;
 			}
+            totalTestsMade++;
             
+            System.out.println("<<<<<<RESULTS>>>>> : "+testsPassed+"/"+totalTestsMade+" tests passed!");
 			/*client.FS_write(21, aux.length, aux);
 			client.FS_write(21, aux.length, aux);
 			size = client.FS_read(id, 21, 10, aux2);

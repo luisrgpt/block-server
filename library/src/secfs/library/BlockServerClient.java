@@ -66,13 +66,13 @@ public class BlockServerClient extends RmiNode {
 		return _blockServer;
 	}
 
-	private Map<Integer, BlockId> getBlockTable()
+	private Map<Integer, BlockId> getBlockTable(BlockId fileId)
 			throws NotBoundException, TamperedBlockException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, SignatureException {
 		try {
 			_blockTable = new HashMap<>();
 			
-			System.out.println("[getBlockTable] ID: " + Arrays.toString(_fileId.getBytes()));
-			byte[] block = getAndVerifyKeyBlock().getBytes();
+			System.out.println("[getBlockTable] ID: " + Arrays.toString(fileId.getBytes()));
+			byte[] block = getAndVerifyKeyBlock(fileId).getBytes();
 			
 			System.out.println("[getBlockTable] Returned: " + Arrays.toString(block));
 			
@@ -131,9 +131,9 @@ public class BlockServerClient extends RmiNode {
   	}
   	
 	//only applicable to hash blocks
-  	private FileBlock getAndVerifyKeyBlock()
+  	private FileBlock getAndVerifyKeyBlock(BlockId fileId)
   			throws NoSuchAlgorithmException, TamperedBlockException, InvalidKeyException, SignatureException, RemoteException, BlockNotFoundException, NotBoundException{
-  		FileBlock block = getBlockServer().get(_fileId);
+  		FileBlock block = getBlockServer().get(fileId);
 		
 		byte[] data = new byte[BLOCK_LENGTH],
 		signatureData = new byte[block.getBytes().length - BLOCK_LENGTH];
@@ -381,6 +381,7 @@ public class BlockServerClient extends RmiNode {
 		//    copy block
 		
 		//Throws FileSystemException
+		
 		checkSize(size, contents);
 		checkInit();
 		if(_previousBlockTable==null){
@@ -388,7 +389,7 @@ public class BlockServerClient extends RmiNode {
 		}
 		try {
 			IBlockServer blockServer = getBlockServer();
-			Map<Integer, BlockId> blockTable = getBlockTable();
+			Map<Integer, BlockId> blockTable = getBlockTable(_fileId);
 
 			List<byte[]> blockList = new ArrayList<>();
 			byte[] currentBlock;
@@ -455,7 +456,7 @@ public class BlockServerClient extends RmiNode {
 		_bytesRead = 0;
 		try {
 			IBlockServer blockServer = getBlockServer();
-			Map<Integer, BlockId> blockTable = getBlockTable();
+			Map<Integer, BlockId> blockTable = getBlockTable(new BlockId(id));
 			
 			byte[] currentBlock;
 			int firstKey = (int) Math.floor((double) (pos / BLOCK_LENGTH)),
