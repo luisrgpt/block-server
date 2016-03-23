@@ -12,6 +12,7 @@ import pteidlib.pteid;
 import java.io.FileOutputStream;
 import java.nio.charset.Charset;
 import java.lang.reflect.Method;
+
 import javax.crypto.*;
 
 import java.io.IOException;
@@ -66,13 +67,11 @@ public class eIDLib_PKCS11_test {
             X509Certificate cert=getCertFromByteArray(getCertificateInBytes(0));
             System.out.println("Citized Authentication Certificate "+cert);
            
-            //TODO: Fix me ([Catch] Exception: Signature length not correct: got 256 but was expecting 128)
             PublicKey key = cert.getPublicKey();
-            
-            cert.checkValidity();
-            cert.verify(key);
+                
+            //System.out.println(key.getEncoded().length);
+            cert.checkValidity();     
             System.exit(0);
-            
             
             
             

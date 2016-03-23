@@ -35,6 +35,9 @@ import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import ccauth.IAuth;
+import ccauth.cc_mockup;
+
 public class BlockServerClient extends RmiNode {
 	
 	private boolean tamperAttack=false;
@@ -46,13 +49,11 @@ public class BlockServerClient extends RmiNode {
 	private BlockId _fileId = null;
 	private IBlockServer _blockServer = null;
 
-	private PublicKey _publicKey;
-	private PrivateKey _privateKey;
-
 	private Map<Integer, BlockId> _blockTable = new HashMap<>();
 	private Map<Integer, BlockId> _previousBlockTable = null; //Check integrity in the client side
 	
 	private int _bytesRead = 0;
+	private IAuth cc_Auth= new cc_mockup();
 
 	private IBlockServer getBlockServer()
 			throws RemoteException, NotBoundException {
@@ -135,16 +136,17 @@ public class BlockServerClient extends RmiNode {
   		FileBlock block = getBlockServer().get(_fileId);
 		
 		byte[] data = new byte[BLOCK_LENGTH],
-			   signatureData = new byte[block.getBytes().length - BLOCK_LENGTH];
+		signatureData = new byte[block.getBytes().length - BLOCK_LENGTH];
   		
 		System.arraycopy(block.getBytes(), 0, data, 0, BLOCK_LENGTH);
 		System.arraycopy(block.getBytes(), BLOCK_LENGTH, signatureData, 0, signatureData.length);
     
-    	//Verify signature
-    	Signature signature = Signature.getInstance("SHA512withRSA");
-    	signature.initVerify(_publicKey);
-    	signature.update(data);
-    	if(signature.verify(signatureData)){
+//    	//Verify signature
+//    	Signature signature = Signature.getInstance("SHA512withRSA");
+//    	signature.initVerify(_publicKey);
+//    	signature.update(data);
+		
+    	if(cc_Auth.verifySignature(signatureData, data)){
     		//then return block
     		return block;
     	}else{
@@ -250,15 +252,16 @@ public class BlockServerClient extends RmiNode {
 					//Create key block
 					KeyBlock keyBlock = new KeyBlock(array);
 				
-					//Create encoded signature
-		        	SecureRandom secureRandom = new SecureRandom(keyBlock.getBytes());
-		        	Signature signature = Signature.getInstance("SHA512withRSA");
-					signature.initSign(_privateKey, secureRandom);
-					signature.update(keyBlock.getBytes());
-					EncodedSignature encodedSignature = new EncodedSignature(signature.sign());
+//					//Create encoded signature
+//		        	SecureRandom secureRandom = new SecureRandom(keyBlock.getBytes());
+//		        	Signature signature = Signature.getInstance("SHA512withRSA");
+//					signature.initSign(_privateKey, secureRandom);
+//					signature.update(keyBlock.getBytes());
+					
+					EncodedSignature encodedSignature = new EncodedSignature(cc_Auth.signData(keyBlock.getBytes()));
 				
 					//Create encoded public key
-					EncodedPublicKey encodedPublicKey = new EncodedPublicKey(_publicKey.getEncoded());
+					EncodedPublicKey encodedPublicKey = new EncodedPublicKey(cc_Auth.getPublickKey().getEncoded());
 					if(tamperAttack){
 						//After generate the signature with the data we should change the block content
 						System.out.println("Tampering data...");
@@ -297,18 +300,19 @@ public class BlockServerClient extends RmiNode {
 
 		try {
 			//Generate key pair for RSA encryption
-			KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
-			keyGen.initialize(1024);
-			KeyPair keys = keyGen.generateKeyPair();
+//			KeyPairGenerator keyGen = KeyPairGenerator.getInstance("RSA");
+//			keyGen.initialize(1024);
+//			KeyPair keys = keyGen.generateKeyPair();
+//	
+//			//Set key pair state
+//			_publicKey = keys.getPublic();
+//			_privateKey = keys.getPrivate();
 	
-			//Set key pair state
-			_publicKey = keys.getPublic();
-			_privateKey = keys.getPrivate();
-	
+			//System.out.println(">>>>>>>>>>>pk size: "+_publicKey.getEncoded().length);
 			//Return public key's sha-1 hash
 			MessageDigest messageDigest;
 			messageDigest = MessageDigest.getInstance("SHA-512");
-			messageDigest.update(_publicKey.getEncoded());
+			messageDigest.update(cc_Auth.getPublickKey().getEncoded());
 			_fileId = new BlockId(messageDigest.digest());
 	
 			return _fileId.getBytes();
