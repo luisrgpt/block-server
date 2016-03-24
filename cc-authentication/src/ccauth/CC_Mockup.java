@@ -11,13 +11,13 @@ import java.security.Signature;
 import java.security.SignatureException;
 
 
-public class cc_mockup implements IAuth {
+public class CC_Mockup implements IAuth {
 
 	private PublicKey _publicKey = null;
 	private PrivateKey _privateKey = null;
 
 	
-	public cc_mockup() {
+	public CC_Mockup() {
 		if (_publicKey == null || _privateKey == null) {
 			// Generate key pair for RSA encryption
 			KeyPairGenerator keyGen;
@@ -53,7 +53,7 @@ public class cc_mockup implements IAuth {
 			Signature signature;
 
 			try {
-				signature = Signature.getInstance("SHA512withRSA");
+				signature = Signature.getInstance("SHA1withRSA");
 				signature.initSign(_privateKey, secureRandom);
 				signature.update(data);
 				output = signature.sign();
@@ -73,7 +73,7 @@ public class cc_mockup implements IAuth {
 	public boolean verifySignature(byte[] in_signature, byte[] data) {
 		// Verify signature
 		try {
-			Signature signature = Signature.getInstance("SHA512withRSA");
+			Signature signature = Signature.getInstance("SHA1withRSA");
 			signature.initVerify(_publicKey);
 			signature.update(data);
 			return signature.verify(in_signature);
@@ -84,6 +84,12 @@ public class cc_mockup implements IAuth {
 		}
 		
 		return false;
+	}
+
+	@Override
+	public void exit() {
+		// TODO Auto-generated method stub
+		
 	}
 
 }

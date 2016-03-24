@@ -35,8 +35,9 @@ import java.security.KeyPairGenerator;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+import ccauth.CC_Auth;
 import ccauth.IAuth;
-import ccauth.cc_mockup;
+import ccauth.CC_Mockup;
 
 public class BlockServerClient extends RmiNode {
 	
@@ -53,7 +54,7 @@ public class BlockServerClient extends RmiNode {
 	private Map<Integer, BlockId> _previousBlockTable = null; //Check integrity in the client side
 	
 	private int _bytesRead = 0;
-	private IAuth cc_Auth= new cc_mockup();
+	private IAuth cc_Auth= new CC_Mockup();
 
 	private IBlockServer getBlockServer()
 			throws RemoteException, NotBoundException {
@@ -533,6 +534,9 @@ public class BlockServerClient extends RmiNode {
 		return output;
   	}
   	
+  	public void exit(){
+  		cc_Auth.exit();
+  	}
   	
   	//Testing methods
 	public void tamperAttack(){

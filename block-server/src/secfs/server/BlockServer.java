@@ -112,7 +112,7 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
         	PublicKey pubKey = keyFactory.generatePublic(pubKeySpec);
 
         	//Verify signature
-        	Signature signature = Signature.getInstance("SHA512withRSA");
+        	Signature signature = Signature.getInstance("SHA1withRSA");
         	signature.initVerify(pubKey);
         	signature.update(keyBlock.getBytes());
         	if(!signature.verify(encodedSignature.getBytes())){
