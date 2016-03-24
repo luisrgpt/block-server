@@ -41,12 +41,12 @@ public class CC_Auth implements IAuth {
 
 	private PublicKey _publicKey = null;
 	private X509Certificate cert;
-	private static java.util.Base64.Encoder encoder;
-	private static PKCS11 pkcs11;
-	private static long p11_session;
+	private java.util.Base64.Encoder encoder;
+	private PKCS11 pkcs11;
+	private long p11_session;
 	private CK_MECHANISM mechanism;
 	private long signatureKey;
-	private static boolean verbose= false; 
+	private boolean verbose= false; 
 
 
 	public CC_Auth() {
@@ -275,13 +275,13 @@ public class CC_Auth implements IAuth {
 	}
 
 	// Returns the CITIZEN AUTHENTICATION CERTIFICATE
-	public static byte[] getCitizenAuthCertInBytes() {
+	public byte[] getCitizenAuthCertInBytes() {
 		return getCertificateInBytes(0); // certificado 0 no Cartao do Cidadao
 											// eh o de autenticacao
 	}
 
 	// Returns the n-th certificate, starting from 0
-	private static byte[] getCertificateInBytes(int n) {
+	private  byte[] getCertificateInBytes(int n) {
 		byte[] certificate_bytes = null;
 		try {
 			PTEID_Certif[] certs = pteid.GetCertificates();
@@ -318,7 +318,7 @@ public class CC_Auth implements IAuth {
 
 	@Override
 	public void exit() {
-
+		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>EXIT<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 		try {
 			pteid.Exit(pteid.PTEID_EXIT_LEAVE_CARD);
 		} catch (PteidException e) {

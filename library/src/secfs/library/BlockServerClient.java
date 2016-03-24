@@ -54,7 +54,7 @@ public class BlockServerClient extends RmiNode {
 	private Map<Integer, BlockId> _previousBlockTable = null; //Check integrity in the client side
 	
 	private int _bytesRead = 0;
-	private IAuth cc_Auth= new CC_Mockup();
+	private IAuth cc_Auth= new CC_Auth();
 
 	private IBlockServer getBlockServer()
 			throws RemoteException, NotBoundException {
@@ -121,7 +121,7 @@ public class BlockServerClient extends RmiNode {
 		
     	byte[] hash = messageDigest.digest();
     
-    	if(Arrays.equals(hash, prevBlockId.getBytes()) || _previousBlockTable.isEmpty()){
+    	if(prevBlockId==null || Arrays.equals(hash, prevBlockId.getBytes()) || _previousBlockTable.isEmpty()){
     		//then return block
     		return block;
     	}else{

@@ -41,13 +41,13 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 	
 	Map<BlockId, FileBlock> _dataBase;
 	Map<BlockId, BlockId> _keyBlockIdTable;
-	ArrayList<EncodedPublicKey> _certs;
+	ArrayList<EncodedPublicKey> _pkStore;
 	
 	public BlockServer() throws RemoteException {
 		//Initialise tables
 		_dataBase = new HashMap<>();
 		_keyBlockIdTable = new HashMap<>();
-		_certs = new ArrayList<EncodedPublicKey>();
+		_pkStore = new ArrayList<EncodedPublicKey>();
     }
 
   	private BlockId createBlockId(byte[] bytes) throws NoSuchAlgorithmException{
@@ -193,18 +193,23 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 	@Override
 	public void storePubKey(EncodedPublicKey pk) {
 		
-		if(pk==null || _certs.contains(pk)){
-			//if cert is already exist return
+		if(pk==null){
 			return;
-		}	
-		_certs.add(pk);
+		}
+		
+		for(EncodedPublicKey key: _pkStore){
+			if(Arrays.equals(pk.getBytes(), key.getBytes())){
+				return;
+			}
+		}
+		_pkStore.add(pk);
 		
 	}
 
 	@Override
 	public ArrayList<EncodedPublicKey> readPubKeys() {
 		// TODO Auto-generated method stub
-		return _certs;
+		return _pkStore;
 		
 	}
 }
