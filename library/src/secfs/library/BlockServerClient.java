@@ -310,14 +310,21 @@ public class BlockServerClient extends RmiNode {
 	
 			//System.out.println(">>>>>>>>>>>pk size: "+_publicKey.getEncoded().length);
 			//Return public key's sha-1 hash
+			
+			//FIXME 
 			MessageDigest messageDigest;
 			messageDigest = MessageDigest.getInstance("SHA-512");
 			messageDigest.update(cc_Auth.getPublickKey().getEncoded());
 			_fileId = new BlockId(messageDigest.digest());
 	
+		
+			//Regist certificate
+			IBlockServer blockServer = getBlockServer();
+			blockServer.storePubKey(new EncodedPublicKey(cc_Auth.getPublickKey().getEncoded()));
+			
 			return _fileId.getBytes();
-		} catch (NoSuchAlgorithmException e) {
-			throw new FileSystemException("[FS_write]: " + e.getMessage());
+		} catch (NoSuchAlgorithmException | RemoteException | NotBoundException e) {
+			throw new FileSystemException("[FS_init]: " + e.getMessage());
 		}
 	}
 	
@@ -363,7 +370,7 @@ public class BlockServerClient extends RmiNode {
 			throw new FileSystemException("File system not initialized.");
 		}
 	}
-	
+
 	public void FS_write(int pos, int size, byte[] contents)
 			throws FileSystemException {
 		//foreach key from range(ceiling(pos/length), ceiling(pos+size/length))
@@ -508,14 +515,23 @@ public class BlockServerClient extends RmiNode {
 	}
 
   	
-  	
-  	
-  	
-  	
-  	
-  	
-  	
-  	
+  	public ArrayList<byte[]> FS_list() throws FileSystemException{
+  		IBlockServer blockServer;
+  		
+		ArrayList<byte[]> output= new ArrayList<byte[]>();
+		ArrayList<EncodedPublicKey> publicKeys= null;
+  		try {
+			blockServer = getBlockServer();
+			publicKeys= blockServer.readPubKeys();
+		} catch (RemoteException | NotBoundException e) {
+			throw new FileSystemException("FS_list: " + e.getMessage());
+		}
+	
+		for(EncodedPublicKey pk: publicKeys){
+			output.add(pk.getBytes());
+		}
+		return output;
+  	}
   	
   	
   	//Testing methods

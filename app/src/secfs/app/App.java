@@ -135,7 +135,12 @@ public class App {
 			}
             totalTestsMade++;
             
+            System.out.println(client.FS_list().toString());
+            
             System.out.println("<<<<<<RESULTS>>>>> : "+testsPassed+"/"+totalTestsMade+" tests passed!");
+            
+            
+            
 			/*client.FS_write(21, aux.length, aux);
 			client.FS_write(21, aux.length, aux);
 			size = client.FS_read(id, 21, 10, aux2);

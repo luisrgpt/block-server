@@ -11,6 +11,7 @@ import java.security.Signature;
 import java.security.SignatureException;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -28,6 +29,7 @@ import secfs.common.TamperedBlockException;
 
 import java.lang.System;
 
+
 public class BlockServer extends UnicastRemoteObject implements IBlockServer {
     /**
 	 * 
@@ -39,11 +41,13 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
 	
 	Map<BlockId, FileBlock> _dataBase;
 	Map<BlockId, BlockId> _keyBlockIdTable;
+	ArrayList<EncodedPublicKey> _certs;
 	
 	public BlockServer() throws RemoteException {
 		//Initialise tables
 		_dataBase = new HashMap<>();
 		_keyBlockIdTable = new HashMap<>();
+		_certs = new ArrayList<EncodedPublicKey>();
     }
 
   	private BlockId createBlockId(byte[] bytes) throws NoSuchAlgorithmException{
@@ -185,4 +189,22 @@ public class BlockServer extends UnicastRemoteObject implements IBlockServer {
     public void serverAttack(){
     	canAttack=true;
     }
+
+	@Override
+	public void storePubKey(EncodedPublicKey pk) {
+		
+		if(pk==null || _certs.contains(pk)){
+			//if cert is already exist return
+			return;
+		}	
+		_certs.add(pk);
+		
+	}
+
+	@Override
+	public ArrayList<EncodedPublicKey> readPubKeys() {
+		// TODO Auto-generated method stub
+		return _certs;
+		
+	}
 }

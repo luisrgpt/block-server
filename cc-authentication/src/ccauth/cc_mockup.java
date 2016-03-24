@@ -10,11 +10,13 @@ import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
 
+
 public class cc_mockup implements IAuth {
 
 	private PublicKey _publicKey = null;
 	private PrivateKey _privateKey = null;
 
+	
 	public cc_mockup() {
 		if (_publicKey == null || _privateKey == null) {
 			// Generate key pair for RSA encryption
@@ -27,6 +29,8 @@ public class cc_mockup implements IAuth {
 				// Set key pair state
 				_publicKey = keys.getPublic();
 				_privateKey = keys.getPrivate();
+							
+				
 			} catch (NoSuchAlgorithmException e) {
 				System.out
 						.println("wrong algorithm to generate public and private keys");
