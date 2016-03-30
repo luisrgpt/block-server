@@ -11,7 +11,7 @@ import java.security.Signature;
 import java.security.SignatureException;
 
 
-public class CC_Mockup implements IAuth {
+public final class CC_Mockup implements IAuth {
 
 	private PublicKey _publicKey = null;
 	private PrivateKey _privateKey = null;
@@ -40,7 +40,7 @@ public class CC_Mockup implements IAuth {
 	}
 
 	@Override
-	public PublicKey getPublickKey() {
+	public PublicKey getPublicKey() {
 		return _publicKey;
 	}
 

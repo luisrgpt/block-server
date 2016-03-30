@@ -10,10 +10,7 @@ import pteidlib.PteidException;
 import pteidlib.pteid;
 
 import java.io.FileOutputStream;
-import java.nio.charset.Charset;
 import java.lang.reflect.Method;
-
-import javax.crypto.*;
 
 import java.io.IOException;
 
@@ -28,7 +25,6 @@ import sun.security.pkcs11.wrapper.PKCS11Exception;
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Signature;
@@ -36,12 +32,13 @@ import java.security.SignatureException;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
+import java.util.Base64;
 
-public class CC_Auth implements IAuth {
+public final class CC_Auth implements IAuth {
 
 	private PublicKey _publicKey = null;
 	private X509Certificate cert;
-	private java.util.Base64.Encoder encoder;
+	private Base64.Encoder encoder;
 	private PKCS11 pkcs11;
 	private long p11_session;
 	private CK_MECHANISM mechanism;
@@ -50,8 +47,6 @@ public class CC_Auth implements IAuth {
 
 
 	public CC_Auth() {
-		// TODO Auto-generated constructor stub
-
 		try {
 
 			if(verbose)
@@ -72,7 +67,7 @@ public class CC_Auth implements IAuth {
 			if(verbose)
 			System.out.println("Java version: " + javaVersion);
 
-			java.util.Base64.Encoder encoder = java.util.Base64.getEncoder();
+			Base64.Encoder encoder = java.util.Base64.getEncoder();
 
 			String libName = "libpteidpkcs11.so";
 
@@ -168,7 +163,7 @@ public class CC_Auth implements IAuth {
 	}
 
 	@Override
-	public PublicKey getPublickKey() {
+	public PublicKey getPublicKey() {
 		return _publicKey;
 	}
 
@@ -275,6 +270,7 @@ public class CC_Auth implements IAuth {
 	}
 
 	// Returns the CITIZEN AUTHENTICATION CERTIFICATE
+	@Override
 	public byte[] getCitizenAuthCertInBytes() {
 		return getCertificateInBytes(0); // certificado 0 no Cartao do Cidadao
 											// eh o de autenticacao

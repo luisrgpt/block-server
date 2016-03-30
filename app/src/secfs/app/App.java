@@ -1,19 +1,16 @@
 package secfs.app;
 
 import java.security.InvalidKeyException;
-import java.security.NoSuchAlgorithmException;
 import java.security.SignatureException;
 import java.util.Arrays;
 import java.util.Random;
 
-import com.sun.security.ntlm.Client;
-
-import jdk.nashorn.internal.ir.Block;
-import secfs.library.BlockServerClient;
+import secfs.library.FileSystem;
 import secfs.library.FileSystemException;
 
 public class App {
 
+	@SuppressWarnings("unused")
 	public static void main(String[] args) throws InvalidKeyException, SignatureException {
         byte[] aux = "potatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotato".getBytes(),
         	   id,
@@ -22,10 +19,8 @@ public class App {
 		int testsPassed=0;
 		int totalTestsMade=0;
         
-		BlockServerClient client = new BlockServerClient();
-		
 		try {
-			id = client.FS_init();
+			id = FileSystem.FS_init();
 			//client.test();
 			//System.exit(1);
 			byte[] buffer = "test1".getBytes();
@@ -35,8 +30,8 @@ public class App {
 			System.out.println("Test1: Writting in invalid position: pos < 0");
 			
 			try{
-				client.FS_write(-10, buffer.length, buffer);			
-				size = client.FS_read(id, -10, 5, aux2);
+				FileSystem.FS_write(-10, buffer.length, buffer);			
+				size = FileSystem.FS_read(id, -10, 5, aux2);
 				System.out.println(">>>>>>>>>>>>>>Test1 - Failed!");
 			}catch(ArrayIndexOutOfBoundsException e){
 				System.out.println(">>>>>>>>>>>>>>Test1 - Passed!");
@@ -46,8 +41,8 @@ public class App {
 			//TEST2
 			System.out.println("Test2: Writting in valid position: pos==20");
 			
-			client.FS_write(20, buffer.length, buffer);
-			size = client.FS_read(id, 20, aux3.length, aux3);
+			FileSystem.FS_write(20, buffer.length, buffer);
+			size = FileSystem.FS_read(id, 20, aux3.length, aux3);
 			
 			if (Arrays.equals(buffer, aux3)){
 				System.out.println(">>>>>>>>>>>>>>>Test2 - Passed!");
@@ -63,11 +58,11 @@ public class App {
 			buffer = new byte[aux3.length];
 			//generate random bytes
 			new Random().nextBytes(buffer);
-			client.FS_write(0, buffer.length, buffer);
+			FileSystem.FS_write(0, buffer.length, buffer);
 			
 			new Random().nextBytes(buffer);
-			client.FS_write(0, buffer.length, buffer);
-			size = client.FS_read(id, 0, aux3.length, aux3);
+			FileSystem.FS_write(0, buffer.length, buffer);
+			size = FileSystem.FS_read(id, 0, aux3.length, aux3);
 			
 			
 			if (Arrays.equals(buffer, aux3)){
@@ -79,7 +74,7 @@ public class App {
 			totalTestsMade++;
 			//TEST4 
 			System.out.println("Test4: Test reading from uncreated blocks: ");
-			size = client.FS_read(id, 200, aux3.length, aux3);
+			size = FileSystem.FS_read(id, 200, aux3.length, aux3);
 
 			
 			if(Arrays.equals(aux3, new byte[aux3.length])){
@@ -95,9 +90,9 @@ public class App {
 			//TEST5
 			try{
 				System.out.println("Test5: Test tamper the blocks when the client sends to server: ");
-				client.tamperAttack();
-				client.FS_write(100, buffer.length, buffer);
-				client.FS_read(id, 100, aux3.length, aux3);
+				FileSystem.tamperAttack();
+				FileSystem.FS_write(100, buffer.length, buffer);
+				FileSystem.FS_read(id, 100, aux3.length, aux3);
 				System.out.println(">>>>>>>>>>>>>>>>>>Test5 Failed!");
 			}catch(FileSystemException e){
 				System.out.println(">>>>>>>>>>>>>>>>>>Test5 Passed!");
@@ -113,8 +108,8 @@ public class App {
 		   System.out.println("Test7: The server will change the content of some block");
            System.out.println("Test7: The client when retrieves that block should reject it");
            try{
-				client.FS_write(200, buffer.length, buffer);
-				client.FS_read(id, 200, aux3.length, aux3);
+        	   FileSystem.FS_write(200, buffer.length, buffer);
+        	   FileSystem.FS_read(id, 200, aux3.length, aux3);
 				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Failed!");
 			} catch (FileSystemException e) {
 				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Passed!");
@@ -125,9 +120,9 @@ public class App {
           //TEST7
 			System.out.println("Test6: Impersonation by changing the publicKey of the put_k to someone's else : ");
 			try{
-				client.impersonationAttack();
-				client.FS_write(100, buffer.length, buffer);
-				client.FS_read(id, 100, aux3.length, aux3);
+				FileSystem.impersonationAttack();
+				FileSystem.FS_write(100, buffer.length, buffer);
+				FileSystem.FS_read(id, 100, aux3.length, aux3);
 				System.out.println(">>>>>>>>>>>>>>>>>>Test7 Failed!");
 			} catch (FileSystemException e) {
 				System.out.println(">>>>>>>>>>>>>>>>>>Test7 Passed!");
@@ -135,13 +130,13 @@ public class App {
 			}
             totalTestsMade++;
             
-            System.out.println(client.FS_list().toString());
+            System.out.println(FileSystem.FS_list().toString());
             
             System.out.println("<<<<<<RESULTS>>>>> : "+testsPassed+"/"+totalTestsMade+" tests passed!");
             
             
             
-            client.exit();
+            FileSystem.exit();
 		} catch (FileSystemException e) {
 			e.printStackTrace();
 		}
