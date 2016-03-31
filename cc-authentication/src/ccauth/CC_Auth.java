@@ -52,7 +52,7 @@ public final class CC_Auth implements IAuth {
 			if(verbose)
 				System.out.println("            //Load the PTEidlibj");
 
-			System.loadLibrary("pteidlibj");
+			//System.loadLibrary("pteidlibj");
 			pteid.Init(""); // Initializes the eID Lib
 			pteid.SetSODChecking(false); // Don't check the integrity of the ID,
 											// address and photo (!)

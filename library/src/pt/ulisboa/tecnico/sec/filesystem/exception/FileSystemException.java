@@ -10,4 +10,8 @@ public final class FileSystemException extends Exception {
 	public FileSystemException(String message, Throwable cause) {
 		super(message, cause);
 	}
+	
+	public FileSystemException(String message) {
+		super(message);
+	}
 }
