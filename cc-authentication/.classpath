@@ -4,6 +4,5 @@
 	<classpathentry kind="lib" path="/usr/lib64/jdk1.8.0_72/jre/lib/ext/sunpkcs11.jar"/>
 	<classpathentry kind="lib" path="/usr/local/lib64/pteid_jni/pteidlibj.jar"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER/org.eclipse.jdt.internal.debug.ui.launcher.StandardVMType/JavaSE-1.8"/>
-	<classpathentry kind="lib" path="/afs/ist.utl.pt/users/0/4/ist172904/Downloads/eIDLib_PKCS11_test/eIDLib_PKCS11_test/lib/pteidlibj.jar"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

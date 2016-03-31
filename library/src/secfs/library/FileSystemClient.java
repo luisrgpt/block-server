@@ -258,7 +258,7 @@ final class FileSystemClient {
 					EncodedSignature encodedSignature = new EncodedSignature(_cc_Auth.signData(keyBlock.getBytes()));
 				
 					//Create encoded public key
-					EncodedPublicKey encodedPublicKey = new EncodedPublicKey(_cc_Auth.getPublicKey().getEncoded());
+					EncodedPublicKey encodedPublicKey = new EncodedPublicKey(_cc_Auth.getPublicKey().toString().getBytes());
 					if(AttackFlag.isBeingTampered()){
 						//After generate the signature with the data we should change the block content
 						System.out.println("Tampering data...");
@@ -273,7 +273,7 @@ final class FileSystemClient {
 						KeyPair keys = keyGen.generateKeyPair();
 				
 						//Set key pair state
-						EncodedPublicKey fakeEncodedPublicKey = new EncodedPublicKey(keys.getPublic().getEncoded());
+						EncodedPublicKey fakeEncodedPublicKey = new EncodedPublicKey(keys.getPublic().toString().getBytes());
 						encodedPublicKey = fakeEncodedPublicKey;
 						AttackFlag.deactivateImpersonationFlag();
 					}
@@ -326,7 +326,7 @@ final class FileSystemClient {
 		switch(keyServerReply) {
 		case ACK:
 			//Set file id
-			byte[] encodedDigest = _cc_Auth.getPublicKey().getEncoded();
+			byte[] encodedDigest = _cc_Auth.getPublicKey().toString().getBytes();
 			MessageDigest messageDigest;
 			messageDigest = MessageDigest.getInstance("SHA-512");
 			messageDigest.update(encodedDigest);
@@ -439,17 +439,17 @@ final class FileSystemClient {
 		List<PublicKey> output= new ArrayList<>();
     	//Decode public key
     	byte[] encodedKey;
-    	X509EncodedKeySpec pubKeySpec;
+    	X509EncodedKeySpec publicKeySpec;
     	KeyFactory keyFactory;
-    	PublicKey pubKey;
+    	PublicKey publicKey;
 		for(EncodedPublicKey encodedPublicKey: encodedPublicKeys){
         	//Decode public key
         	encodedKey = encodedPublicKey.getBytes();
-        	pubKeySpec = new X509EncodedKeySpec(encodedKey);
+        	publicKeySpec = new X509EncodedKeySpec(encodedKey);
         	keyFactory = KeyFactory.getInstance("RSA");
-        	pubKey = keyFactory.generatePublic(pubKeySpec);
+        	publicKey = keyFactory.generatePublic(publicKeySpec);
 			
-			output.add(pubKey);
+			output.add(publicKey);
 		}
 		return output;
 	}

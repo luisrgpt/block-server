@@ -22,7 +22,6 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Random;
 
 import secfs.common.BlockId;
@@ -40,7 +39,6 @@ import secfs.common.exception.TamperedBlockException;
 
 import java.io.ByteArrayInputStream;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.System;
@@ -111,24 +109,28 @@ public final class FileSystemServer extends UnicastRemoteObject implements IFile
   		//Throws InvalidRemoteArgumentException
   		checkArgumentsNonNullability(blockId);
   		
-  		//Check if block exists
-  		BlockId currentBlockId;
-    	for (Map.Entry<BlockId, FileBlock> entry : _dataBase.entrySet()) {
-    		currentBlockId = entry.getKey();
-    		if(currentBlockId.hashCode() == blockId.hashCode()) {
-    			try {
+  		try {
+	  		//Check if block exists
+	  		BlockId currentBlockId;
+	    	for (Map.Entry<BlockId, FileBlock> entry : _dataBase.entrySet()) {
+	    		currentBlockId = entry.getKey();
+	    		if(currentBlockId.hashCode() == blockId.hashCode()) {		
     				BlockId newBlockId = createBlockId(entry.getValue().getBytes());
+    				
     				System.out.println("Value: " + Arrays.toString(newBlockId.getBytes()));
     				System.out.println("Key: " + Arrays.toString(entry.getKey().getBytes()));
     				if (_keyBlockIdTable.get(currentBlockId) != null)
     				System.out.println("Table: " + Arrays.toString(_keyBlockIdTable.get(currentBlockId).getBytes()));
     				System.out.println("Returns: " + Arrays.toString(entry.getValue().getBytes()));
+    				
+    				//Check if key block was tampered
     				if(!entry.getKey().equals(newBlockId) &&
 					   (_keyBlockIdTable.get(currentBlockId) == null ||
 					    !_keyBlockIdTable.get(currentBlockId).equals(newBlockId))) {
 						throw new TamperedBlockException();
 					}
     				
+    				//Simulate attack
     				if(serverUnderAttack && canAttack){
     					serverUnderAttack=false;
     					int size = entry.getValue().getBytes().length;
@@ -136,15 +138,16 @@ public final class FileSystemServer extends UnicastRemoteObject implements IFile
     					new Random().nextBytes(fakeData);
     					return new FileBlock(fakeData);
     				}
+    				
 					return entry.getValue();
-				} catch (NoSuchAlgorithmException e) {
-					//Not suppose to happen, even as an invalid state
-					System.out.println(e.getMessage());
-					System.exit(1);
-					throw new RemoteException("get: " + e.getMessage());
-				}
-    		}
-    	}
+	    		}
+	    	}
+		} catch (NoSuchAlgorithmException e) {
+			//Not suppose to happen, even as an invalid state
+			System.out.println(e.getMessage());
+			System.exit(1);
+			throw new RemoteException("get: " + e.getMessage());
+		}
   		
   		throw new BlockNotFoundException();
     }
@@ -157,13 +160,13 @@ public final class FileSystemServer extends UnicastRemoteObject implements IFile
         try {
         	//Decode public key
         	byte[] encodedKey = encodedPublicKey.getBytes();
-        	X509EncodedKeySpec pubKeySpec = new X509EncodedKeySpec(encodedKey);
+        	X509EncodedKeySpec publicKeySpec = new X509EncodedKeySpec(encodedKey);
         	KeyFactory keyFactory = KeyFactory.getInstance("RSA");
-        	PublicKey pubKey = keyFactory.generatePublic(pubKeySpec);
+        	PublicKey publicKey = keyFactory.generatePublic(publicKeySpec);
 
         	//Verify signature
         	Signature signature = Signature.getInstance("SHA1withRSA");
-        	signature.initVerify(pubKey);
+        	signature.initVerify(publicKey);
         	signature.update(keyBlock.getBytes());
         	if(!signature.verify(encodedSignature.getBytes())){
         		serverAttack();
@@ -171,6 +174,7 @@ public final class FileSystemServer extends UnicastRemoteObject implements IFile
         		throw new TamperedBlockException();
         	}
         	
+        	//Inject signature into key block
         	byte[] content = new byte[keyBlock.getBytes().length + encodedSignature.getBytes().length];
         	System.arraycopy(keyBlock.getBytes(), 0, content, 0, keyBlock.getBytes().length);
         	System.arraycopy(encodedSignature.getBytes(), 0, content, keyBlock.getBytes().length, encodedSignature.getBytes().length);
@@ -271,7 +275,7 @@ public final class FileSystemServer extends UnicastRemoteObject implements IFile
 		List<EncodedPublicKey> publicKeys = new ArrayList<>();
 		EncodedPublicKey encodedPublicKey;
 		for(Certificate certificate : certificates) {
-			encodedPublicKey = new EncodedPublicKey(certificate.getPublicKey().getEncoded());
+			encodedPublicKey = new EncodedPublicKey(certificate.getPublicKey().toString().getBytes());
 			publicKeys.add(encodedPublicKey);
 		}
 		

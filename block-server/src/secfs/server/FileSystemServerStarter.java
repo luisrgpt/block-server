@@ -2,11 +2,14 @@ package secfs.server;
 
 import secfs.common.IFileSystemServer;
 import secfs.common.RmiNode;
+import secfs.common.exception.InvalidRemoteArgumentException;
 
 import java.rmi.registry.Registry;
 import java.security.KeyStoreException;
-import java.rmi.RemoteException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.CertificateException;
 import java.rmi.registry.LocateRegistry;
+import java.io.IOException;
 import java.lang.System;
 
 public final class FileSystemServerStarter extends RmiNode {
@@ -21,7 +24,7 @@ public final class FileSystemServerStarter extends RmiNode {
         try{
         	//Initialize file system server
             _blockServer = new FileSystemServer();
-            _blockServer.initializeFileSystemServer();
+            _blockServer.initializeFileSystemServer(null);
 
             //Submit file system server
             Registry reg = LocateRegistry.createRegistry(REGISTRY_PORT);
@@ -30,7 +33,7 @@ public final class FileSystemServerStarter extends RmiNode {
 			//Naming.rebind("BlockServer", blockServer);
 
             System.out.println("Block server ready");
-        } catch (KeyStoreException | RemoteException e) {
+        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException | InvalidRemoteArgumentException e) {
         	_blockServer = null;
             System.out.println("Block server main " + e.getMessage());
         }
