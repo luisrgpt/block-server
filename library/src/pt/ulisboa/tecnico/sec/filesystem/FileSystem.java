@@ -6,7 +6,7 @@ import pt.ulisboa.tecnico.sec.filesystem.exception.FileSystemException;
 
 import java.security.PublicKey;
 
-final public class FileSystem {
+public final class FileSystem {
 
 	private static FileSystemClient _fileSystemClient;
 

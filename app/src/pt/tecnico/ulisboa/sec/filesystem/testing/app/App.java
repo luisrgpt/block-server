@@ -1,34 +1,30 @@
 package pt.tecnico.ulisboa.sec.filesystem.testing.app;
 
-import java.security.InvalidKeyException;
 import java.security.PublicKey;
-import java.security.SignatureException;
 import java.util.Arrays;
 import java.util.Random;
 
 import ccauth.CC_Auth;
-import ccauth.IAuth;
 import pt.ulisboa.tecnico.sec.filesystem.FileSystem;
 import pt.ulisboa.tecnico.sec.filesystem.exception.FileSystemException;
 
 public class App {
 
-	@SuppressWarnings("unused")
-	public static void main(String[] args) throws InvalidKeyException, SignatureException {
+	public static void main(String[] args) {
         byte[] aux = "potatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotato".getBytes(),
         	   id,
         	   aux2 = new byte[10];
         int size=0;
 		int testsPassed=0;
 		int totalTestsMade=0;
-		IAuth auth = new CC_Auth();
         
 		try {
+			CC_Auth auth = new CC_Auth();
+			
 			PublicKey pk = auth.getPublicKey();
 			
 			FileSystem.FS_init();
-			//client.test();
-			//System.exit(1);
+
 			byte[] buffer = "test1".getBytes();
 			byte[] aux3= new byte[buffer.length];
 			

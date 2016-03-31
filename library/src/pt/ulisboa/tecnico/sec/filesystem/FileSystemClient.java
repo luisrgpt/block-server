@@ -24,7 +24,6 @@ import java.util.List;
 import java.util.Map;
 
 import ccauth.CC_Auth;
-import ccauth.IAuth;
 import pt.tecnico.ulisboa.sec.filesystem.common.BlockId;
 import pt.tecnico.ulisboa.sec.filesystem.common.Constant;
 import pt.tecnico.ulisboa.sec.filesystem.common.EncodedCertificate;
@@ -80,7 +79,7 @@ final class FileSystemClient {
 		private Map<Integer, BlockId> _previousBlockTable;
 		
 		private int _bytesRead;
-		private IAuth _cc_Auth;
+		private CC_Auth _cc_Auth;
 	
 		private FileSystemClientImpl() 
 				throws FileSystemException {
@@ -96,7 +95,7 @@ final class FileSystemClient {
 				_previousBlockTable = new HashMap<>();
 				
 				_bytesRead = 0;
-				_cc_Auth= new CC_Auth();
+				_cc_Auth = new CC_Auth();
 			
 				//Submit certificate
 				IFileSystemServer blockServer;

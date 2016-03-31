@@ -1,7 +1,5 @@
 package ccauth;
 
-import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
@@ -11,12 +9,9 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.Signature;
 import java.security.SignatureException;
-import java.security.cert.CertificateException;
-import java.security.cert.CertificateFactory;
-import java.security.cert.X509Certificate;
 
 
-public final class CC_Mockup implements IAuth {
+public class CC_Mockup implements IAuth {
 
 	private PublicKey _publicKey = null;
 	private PrivateKey _privateKey = null;
@@ -45,25 +40,8 @@ public final class CC_Mockup implements IAuth {
 	}
 
 	@Override
-	public PublicKey getPublicKey() {
+	public PublicKey getPublickKey() {
 		return _publicKey;
-	}
-	
-	@Override
-	public byte[] getCitizenAuthCertInBytes() {
-		try {
-			CertificateFactory cf;
-			cf = CertificateFactory.getInstance("X.509");
-			String PKstr = _publicKey.toString();
-			InputStream PKstream = new ByteArrayInputStream(PKstr.getBytes());
-			X509Certificate pkcert = (X509Certificate)cf.generateCertificate(PKstream);
-			
-			return pkcert.toString().getBytes();
-		} catch (CertificateException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		return null;
 	}
 
 	@Override
