@@ -20,8 +20,8 @@ public class App {
         
 		try {
 			CC_Auth auth = new CC_Auth();
-			
 			PublicKey pk = auth.getPublicKey();
+			auth.exit();
 			
 			FileSystem.FS_init();
 

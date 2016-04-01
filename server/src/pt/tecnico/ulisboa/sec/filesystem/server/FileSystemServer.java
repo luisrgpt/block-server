@@ -21,6 +21,7 @@ import java.security.spec.InvalidKeySpecException;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -76,6 +77,7 @@ final class FileSystemServer {
 		//Key server attributes
 		private char[] _password;
 		private KeyStore _keyStore;
+		private int _idCounter;
 		
 		//Block server attributes
 		private Map<BlockId, FileBlock> _dataBase;
@@ -103,6 +105,7 @@ final class FileSystemServer {
 				_dataBase = new HashMap<>();
 				_keyBlockIdTable = new HashMap<>();
 				_keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
+				_idCounter = 0;
 				_password = password;
 				
 				//Load key store
@@ -291,12 +294,12 @@ final class FileSystemServer {
 			//Decode certificate
 			InputStream inputStream = new ByteArrayInputStream(encodedCertificate.getBytes());
 			CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
-			X509Certificate certificate = (X509Certificate) certificateFactory.generateCertificates(inputStream);
+			X509Certificate x509Certificate = (X509Certificate) certificateFactory.generateCertificate(inputStream);
 	
 			//Store certificate
-			KeyStore.ProtectionParameter protectionParameter = new KeyStore.PasswordProtection(_password);
-		    KeyStore.TrustedCertificateEntry trustedCertificateEntry = new KeyStore.TrustedCertificateEntry(certificate);
-		    _keyStore.setEntry(CERTIFICATE_ALIAS, trustedCertificateEntry, protectionParameter);
+			//KeyStore.ProtectionParameter protectionParameter = new KeyStore.PasswordProtection(_password);
+		    KeyStore.TrustedCertificateEntry trustedCertificateEntry = new KeyStore.TrustedCertificateEntry(x509Certificate);
+		    _keyStore.setEntry(Integer.toString(++_idCounter), trustedCertificateEntry, null);//protectionParameter);
 			
 			return FileSystemServerReply.ACK;
 		}
@@ -304,13 +307,11 @@ final class FileSystemServer {
 		@Override
 	  	public List<EncodedPublicKey> readPubKeys()
 				throws KeyStoreException {
-			Certificate[] certificates = _keyStore.getCertificateChain(CERTIFICATE_ALIAS);
-			
 			//Get public keys from key store
 			List<EncodedPublicKey> publicKeys = new ArrayList<>();
 			EncodedPublicKey encodedPublicKey;
-			for(Certificate certificate : certificates) {
-				encodedPublicKey = new EncodedPublicKey(certificate.getPublicKey().toString().getBytes());
+			for(Enumeration<String> aliases = _keyStore.aliases(); aliases.hasMoreElements(); ) {
+				encodedPublicKey = new EncodedPublicKey(_keyStore.getCertificate(aliases.nextElement()).getPublicKey().getEncoded());
 				publicKeys.add(encodedPublicKey);
 			}
 			

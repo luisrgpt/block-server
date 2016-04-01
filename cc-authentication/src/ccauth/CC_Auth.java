@@ -323,8 +323,9 @@ public class CC_Auth implements IAuth {
 	public void exit() {
 		System.out.println(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>EXIT<<<<<<<<<<<<<<<<<<<<<<<<<<<");
 		try {
+			pkcs11.C_CloseSession(p11_session);
 			pteid.Exit(pteid.PTEID_EXIT_LEAVE_CARD);
-		} catch (PteidException e) {
+		} catch (PteidException | PKCS11Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} // OBRIGATORIO Termina a

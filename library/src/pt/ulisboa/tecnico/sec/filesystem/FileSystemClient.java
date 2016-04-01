@@ -101,7 +101,8 @@ final class FileSystemClient {
 				IFileSystemServer blockServer;
 				blockServer = getBlockServer();
 				
-				FileSystemServerReply keyServerReply = blockServer.storePubKey(new EncodedCertificate(_cc_Auth.getCitizenAuthCertInBytes()));
+				EncodedCertificate encodedCertificate = new EncodedCertificate(_cc_Auth.getCitizenAuthCertInBytes().clone());
+				FileSystemServerReply keyServerReply = blockServer.storePubKey(encodedCertificate);
 				
 				switch(keyServerReply) {
 				case ACK:
@@ -143,7 +144,7 @@ final class FileSystemClient {
 		}
 
 		private BlockId createBlockId(PublicKey publicKey) throws NoSuchAlgorithmException {
-			byte[] encodedDigest = publicKey.toString().getBytes();
+			byte[] encodedDigest = publicKey.getEncoded();
 			MessageDigest messageDigest;
 			messageDigest = MessageDigest.getInstance("SHA-512");
 			messageDigest.update(encodedDigest);
@@ -346,7 +347,7 @@ final class FileSystemClient {
 						EncodedSignature encodedSignature = new EncodedSignature(_cc_Auth.signData(keyBlock.getBytes()));
 					
 						//Create encoded public key
-						EncodedPublicKey encodedPublicKey = new EncodedPublicKey(_cc_Auth.getPublicKey().toString().getBytes());
+						EncodedPublicKey encodedPublicKey = new EncodedPublicKey(_cc_Auth.getPublicKey().getEncoded());
 						if(AttackFlag.isBeingTampered()){
 							//After generate the signature with the data we should change the block content
 							System.out.println("Tampering data...");
@@ -361,7 +362,7 @@ final class FileSystemClient {
 							KeyPair keys = keyGen.generateKeyPair();
 					
 							//Set key pair state
-							EncodedPublicKey fakeEncodedPublicKey = new EncodedPublicKey(keys.getPublic().toString().getBytes());
+							EncodedPublicKey fakeEncodedPublicKey = new EncodedPublicKey(keys.getPublic().getEncoded());
 							encodedPublicKey = fakeEncodedPublicKey;
 							AttackFlag.deactivateImpersonationFlag();
 						}
