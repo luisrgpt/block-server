@@ -1,6 +1,7 @@
 package pt.tecnico.ulisboa.sec.filesystem.testing.app;
 
 import java.security.PublicKey;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
@@ -33,7 +34,7 @@ public class App {
 			
 			try{
 				FileSystem.FS_write(-10, buffer.length, buffer);			
-				size = FileSystem.FS_read(pk, -10, 5, aux2);
+				aux2 = FileSystem.FS_read(pk, -10, 5, size);
 				System.out.println(">>>>>>>>>>>>>>Test1 - Failed!");
 			}catch(ArrayIndexOutOfBoundsException e){
 				System.out.println(">>>>>>>>>>>>>>Test1 - Passed!");
@@ -44,7 +45,7 @@ public class App {
 			System.out.println("Test2: Writting in valid position: pos==20");
 			
 			FileSystem.FS_write(20, buffer.length, buffer);
-			size = FileSystem.FS_read(pk, 20, aux3.length, aux3);
+			aux3 = FileSystem.FS_read(pk, 20, aux3.length, size);
 			
 			if (Arrays.equals(buffer, aux3)){
 				System.out.println(">>>>>>>>>>>>>>>Test2 - Passed!");
@@ -64,7 +65,7 @@ public class App {
 			
 			new Random().nextBytes(buffer);
 			FileSystem.FS_write(0, buffer.length, buffer);
-			size = FileSystem.FS_read(pk, 0, aux3.length, aux3);
+			aux3 = FileSystem.FS_read(pk, 0, aux3.length, size);
 			
 			
 			if (Arrays.equals(buffer, aux3)){
@@ -76,7 +77,7 @@ public class App {
 			totalTestsMade++;
 			//TEST4 
 			System.out.println("Test4: Test reading from uncreated blocks: ");
-			size = FileSystem.FS_read(pk, 200, aux3.length, aux3);
+			aux3 = FileSystem.FS_read(pk, 200, aux3.length, size);
 
 			
 			if(Arrays.equals(aux3, new byte[aux3.length])){
@@ -94,7 +95,7 @@ public class App {
 				System.out.println("Test5: Test tamper the blocks when the client sends to server: ");
 				FileSystem.tamperAttack();
 				FileSystem.FS_write(100, buffer.length, buffer);
-				FileSystem.FS_read(pk, 100, aux3.length, aux3);
+				FileSystem.FS_read(pk, 100, aux3.length, size);
 				System.out.println(">>>>>>>>>>>>>>>>>>Test5 Failed!");
 			}catch(FileSystemException e){
 				System.out.println(">>>>>>>>>>>>>>>>>>Test5 Passed!");
@@ -111,7 +112,7 @@ public class App {
            System.out.println("Test7: The client when retrieves that block should reject it");
            try{
         	   FileSystem.FS_write(200, buffer.length, buffer);
-        	   FileSystem.FS_read(pk, 200, aux3.length, aux3);
+        	   FileSystem.FS_read(pk, 200, aux3.length, size);
 				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Failed!");
 			} catch (FileSystemException e) {
 				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Passed!");
@@ -124,7 +125,7 @@ public class App {
 			try{
 				FileSystem.impersonationAttack();
 				FileSystem.FS_write(100, buffer.length, buffer);
-				FileSystem.FS_read(pk, 100, aux3.length, aux3);
+				FileSystem.FS_read(pk, 100, aux3.length, size);
 				System.out.println(">>>>>>>>>>>>>>>>>>Test7 Failed!");
 			} catch (FileSystemException e) {
 				System.out.println(">>>>>>>>>>>>>>>>>>Test7 Passed!");
@@ -132,9 +133,37 @@ public class App {
 			}
             totalTestsMade++;
             
-            System.out.println(FileSystem.FS_list().toString());
+            System.out.println("<<<<<<Tests for Part2>>>>> : ");
             
+            System.out.println("Test8: Try to get someone else file : ");
+            
+          /*  FileSystem.FS_write(0, buffer.length, buffer);
+            FileSystem.FS_read(id, 0, aux3.length, aux3);
+            //Initialize a new user to get a file from the previous client
+            BlockServerClient client2 = new BlockServerClient();
+            byte[] client2_fId;
+            
+            client2_fId = client2.FS_init();   
+            client2.FS_read(id, 0, aux3.length, aux3);
+            
+            if(Arrays.equals(buffer, aux3)){
+            	System.out.println("Test8: Passed!");
+            	testsPassed++;
+            }else{
+            	System.out.println("Test8: Failed!");
+            }
+            totalTestsMade++;
+            
+            ArrayList<byte[]> listOfPublicKeys =client2.FS_list();
+            
+            System.out.println("Test9: Try to get a file that does not exist");
+            client2.FS_read("WrongFileId".getBytes(), 0, aux3.length, aux3);
+            
+            */
             System.out.println("<<<<<<RESULTS>>>>> : "+testsPassed+"/"+totalTestsMade+" tests passed!");
+            
+            
+            
             
             
             

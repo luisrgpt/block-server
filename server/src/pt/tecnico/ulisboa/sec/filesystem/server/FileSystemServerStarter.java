@@ -11,5 +11,6 @@ public final class FileSystemServerStarter {
 	public static void main(String[] args)
 			throws FileSystemServerException, RemoteException {
 		new FileSystemServer(password);
+		System.out.println("File system server is online.");
 	}
 }

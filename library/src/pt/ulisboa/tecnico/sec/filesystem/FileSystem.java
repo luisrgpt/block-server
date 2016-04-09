@@ -63,14 +63,16 @@ public final class FileSystem {
 		_fileSystemClient.writeIntoFileSystemServer(pos, contents);
 	}
 
-	public static int FS_read(PublicKey pk, int pos, int size, byte[] contents)
+	public static byte[] FS_read(PublicKey pk, int pos, int size, Integer nRead)
 			throws FileSystemException {
 		//Check parameters
-		checkArgumentsNonNullability(pk, pos, size, contents);
-		checkContentSize(size, contents);
+		checkArgumentsNonNullability(pk, pos, size, nRead);
 		checkFileSystemClientNonNullability();
+		
+		byte[] result = new byte[size];
+		nRead = _fileSystemClient.readFromFileSystemServer(pk, pos, result);
 
-		return _fileSystemClient.readFromFileSystemServer(pk, pos, contents);
+		return result;
 	}
 
   	public static List<PublicKey> FS_list()

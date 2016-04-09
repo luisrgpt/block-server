@@ -26,6 +26,8 @@ import sun.security.pkcs11.wrapper.PKCS11Constants;
 import sun.security.pkcs11.wrapper.PKCS11Exception;
 
 import java.io.ByteArrayInputStream;
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.InputStream;
 import java.security.InvalidKeyException;
 import java.security.Key;
@@ -33,9 +35,23 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.security.cert.CertPath;
+import java.security.cert.CertPathBuilder;
+import java.security.cert.CertPathBuilderResult;
+import java.security.cert.CertPathValidator;
+import java.security.cert.CertPathValidatorResult;
+import java.security.cert.Certificate;
 import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
+import java.security.cert.PKIXBuilderParameters;
+import java.security.cert.PKIXRevocationChecker;
+import java.security.cert.PKIXRevocationChecker.Option;
+import java.security.cert.TrustAnchor;
+import java.security.cert.X509CertSelector;
 import java.security.cert.X509Certificate;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
 
 public class CC_Auth implements IAuth {
 
@@ -92,6 +108,48 @@ public class CC_Auth implements IAuth {
 			
 			if(verbose)
 			System.out.println("Citized Authentication Certificate " + cert);
+			
+			// Certificate Validation
+						CertificateFactory cf = CertificateFactory.getInstance("X.509");
+						
+						//FileInputStream in = new FileInputStream(new File("EC_de_Autenticacao_do_Cartao_de_Cidadao_0006.cer"));
+						FileInputStream in = new FileInputStream(new File("EC de Autenticacao do Cartao de Cidadao 0009.cer"));
+						Certificate trust = cf.generateCertificate(in);
+
+						/* Construct a CertPathBuilder */
+						TrustAnchor anchor = new TrustAnchor((X509Certificate) trust, null);
+						Set<TrustAnchor> trustAnchors = new HashSet<TrustAnchor>();
+						trustAnchors.add(anchor);
+
+						X509CertSelector certSelector = new X509CertSelector();
+						certSelector.setCertificate(cert);
+
+						PKIXBuilderParameters params = new PKIXBuilderParameters(trustAnchors, certSelector);
+						CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX");
+
+						/* Enable usage of revocation lists */
+						PKIXRevocationChecker rc = (PKIXRevocationChecker) cpb.getRevocationChecker();
+						rc.setOptions(EnumSet.of(Option.PREFER_CRLS));
+						params.addCertPathChecker(rc);
+
+						CertPathBuilderResult cpbr = cpb.build(params);
+						if(verbose)
+							System.out.println("CertPathBuilderResult" + cpbr);
+
+						System.out.println("****************************");
+
+						/* Now Validate the Certificate Path */
+
+						CertPath cp = cpbr.getCertPath();
+						CertPathValidator cpv = CertPathValidator.getInstance("PKIX");
+						CertPathValidatorResult cpvr = cpv.validate(cp, params);
+
+						/*
+						 * If no exception is generated here, it means that validation was
+						 * successful
+						 */
+						System.out.println("Validation successful");
+
 
 			_publicKey = cert.getPublicKey();
 
