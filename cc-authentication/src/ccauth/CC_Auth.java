@@ -64,6 +64,7 @@ public class CC_Auth implements IAuth {
 	private long signatureKey;
 	private boolean verbose= false; 
 
+	@Override
 	public PublicKey getPublicKey() {
 		return _publicKey;
 	}
@@ -226,11 +227,6 @@ public class CC_Auth implements IAuth {
 			e.printStackTrace();
 		}
 
-	}
-
-	@Override
-	public PublicKey getPublickKey() {
-		return _publicKey;
 	}
 
 	@Override

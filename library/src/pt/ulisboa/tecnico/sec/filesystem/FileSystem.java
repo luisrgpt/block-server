@@ -44,13 +44,14 @@ public final class FileSystem {
 		}
 	}
 	
-	public static void FS_init()
+	public static PublicKey FS_init()
 			throws FileSystemException {
 		//Check parameters
 		CheckFileSystemClientNullability();
 
 		//Initialise file system client
 		_fileSystemClient = new FileSystemClient();
+		return _fileSystemClient.getClientPublicKey();
 	}
 
 	public static void FS_write(int pos, int size, byte[] contents)

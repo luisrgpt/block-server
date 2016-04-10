@@ -40,7 +40,7 @@ public class CC_Mockup implements IAuth {
 	}
 
 	@Override
-	public PublicKey getPublickKey() {
+	public PublicKey getPublicKey() {
 		return _publicKey;
 	}
 

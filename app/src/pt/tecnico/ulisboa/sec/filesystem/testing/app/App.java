@@ -5,7 +5,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
-import ccauth.CC_Auth;
 import pt.ulisboa.tecnico.sec.filesystem.FileSystem;
 import pt.ulisboa.tecnico.sec.filesystem.exception.FileSystemException;
 
@@ -20,11 +19,8 @@ public class App {
 		int totalTestsMade=0;
         
 		try {
-			CC_Auth auth = new CC_Auth();
-			PublicKey pk = auth.getPublicKey();
-			auth.exit();
 			
-			FileSystem.FS_init();
+			PublicKey pk = FileSystem.FS_init();
 
 			byte[] buffer = "test1".getBytes();
 			byte[] aux3= new byte[buffer.length];

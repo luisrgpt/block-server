@@ -74,10 +74,9 @@ final class FileSystemServer {
 		private boolean serverUnderAttack = true,
 				        canAttack         = false;
 		
-		//Key server attributes
-		private char[] _password;
-		private KeyStore _keyStore;
-		private int _idCounter;
+		//Key server attributes		
+		private ArrayList<EncodedPublicKey> _pkStore;
+		
 		
 		//Block server attributes
 		private Map<BlockId, FileBlock> _dataBase;
@@ -104,21 +103,10 @@ final class FileSystemServer {
 				//Initialise attributes
 				_dataBase = new HashMap<>();
 				_keyBlockIdTable = new HashMap<>();
-				_keyStore = KeyStore.getInstance(KeyStore.getDefaultType());
-				_idCounter = 0;
-				_password = password;
 				
-				//Load key store
-				FileInputStream fileInputStream;
-				File keyStoreFile = new File(KEY_STORE_NAME);
-				if(keyStoreFile.exists()) {
-					fileInputStream = new FileInputStream(keyStoreFile);
-				} else {
-					fileInputStream = null;
-				}
+				//KeyStore 
+				_pkStore = new ArrayList<EncodedPublicKey>();
 				
-		    	_keyStore.load(fileInputStream, _password);
-		    	
 		    	//Submit file system server
 		        Registry reg = LocateRegistry.createRegistry(Constant.REGISTRY_PORT);
 				reg.rebind(Constant.SERVICE_NAME, (IFileSystemServer) this);
@@ -126,9 +114,6 @@ final class FileSystemServer {
 				//Naming.rebind("BlockServer", blockServer);
 			} catch (BlockTooSmallException |
 					 URISyntaxException |
-					 KeyStoreException |
-					 NoSuchAlgorithmException |
-					 CertificateException |
 					 IOException |
 					 NullArgumentException exception) {
 				throw new FileSystemServerException("[main]: " + exception.getMessage(), exception);
@@ -286,36 +271,28 @@ final class FileSystemServer {
 	    }
 	
 		@Override
-	  	public FileSystemServerReply storePubKey(EncodedCertificate encodedCertificate)
-	    		throws RemoteException, InvalidRemoteArgumentException, CertificateException, KeyStoreException, NullArgumentException {
-	   		//Check parameters
-			checkArgumentsNonNullability(encodedCertificate);
+	  	public FileSystemServerReply storePubKey(EncodedPublicKey encodedPk)
+	    		throws RemoteException {
+
+		    if(encodedPk==null){
+				return FileSystemServerReply.NACK;
+			}
 			
-			//Decode certificate
-			InputStream inputStream = new ByteArrayInputStream(encodedCertificate.getBytes());
-			CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
-			X509Certificate x509Certificate = (X509Certificate) certificateFactory.generateCertificate(inputStream);
-	
-			//Store certificate
-			//KeyStore.ProtectionParameter protectionParameter = new KeyStore.PasswordProtection(_password);
-		    KeyStore.TrustedCertificateEntry trustedCertificateEntry = new KeyStore.TrustedCertificateEntry(x509Certificate);
-		    _keyStore.setEntry(Integer.toString(++_idCounter), trustedCertificateEntry, null);//protectionParameter);
+			for(EncodedPublicKey key: _pkStore){
+				if(Arrays.equals(encodedPk.getBytes(), key.getBytes())){
+					return FileSystemServerReply.NACK;
+				}
+			}
+			_pkStore.add(encodedPk);
 			
 			return FileSystemServerReply.ACK;
 		}
 	
 		@Override
-	  	public List<EncodedPublicKey> readPubKeys()
-				throws KeyStoreException {
+	  	public ArrayList<EncodedPublicKey> readPubKeys()
+				throws RemoteException {
 			//Get public keys from key store
-			List<EncodedPublicKey> publicKeys = new ArrayList<>();
-			EncodedPublicKey encodedPublicKey;
-			for(Enumeration<String> aliases = _keyStore.aliases(); aliases.hasMoreElements(); ) {
-				encodedPublicKey = new EncodedPublicKey(_keyStore.getCertificate(aliases.nextElement()).getPublicKey().getEncoded());
-				publicKeys.add(encodedPublicKey);
-			}
-			
-			return publicKeys;
+			return _pkStore;
 			
 		}
 	   	

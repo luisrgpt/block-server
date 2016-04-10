@@ -24,6 +24,8 @@ import java.util.List;
 import java.util.Map;
 
 import ccauth.CC_Auth;
+import ccauth.CC_Mockup;
+import ccauth.IAuth;
 import pt.tecnico.ulisboa.sec.filesystem.common.BlockId;
 import pt.tecnico.ulisboa.sec.filesystem.common.Constant;
 import pt.tecnico.ulisboa.sec.filesystem.common.EncodedCertificate;
@@ -70,6 +72,9 @@ final class FileSystemClient {
 		_fileSystemClientImpl.exitCc_Auth();
 	}
 
+	PublicKey getClientPublicKey(){
+		return _fileSystemClientImpl.getPublicKey();
+	}
 	
 	private class FileSystemClientImpl {
 		private BlockId _fileId;
@@ -79,7 +84,7 @@ final class FileSystemClient {
 		private Map<Integer, BlockId> _previousBlockTable;
 		
 		private int _bytesRead;
-		private CC_Auth _cc_Auth;
+		private IAuth _cc_Auth;
 	
 		private FileSystemClientImpl() 
 				throws FileSystemException {
@@ -95,14 +100,13 @@ final class FileSystemClient {
 				_previousBlockTable = new HashMap<>();
 				
 				_bytesRead = 0;
-				_cc_Auth = new CC_Auth();
+				_cc_Auth = new CC_Mockup();
 			
 				//Submit certificate
 				IFileSystemServer blockServer;
 				blockServer = getBlockServer();
 				
-				EncodedCertificate encodedCertificate = new EncodedCertificate(_cc_Auth.getCitizenAuthCertInBytes().clone());
-				FileSystemServerReply keyServerReply = blockServer.storePubKey(encodedCertificate);
+				FileSystemServerReply keyServerReply = blockServer.storePubKey(new EncodedPublicKey(_cc_Auth.getPublicKey().getEncoded()));
 				
 				switch(keyServerReply) {
 				case ACK:
@@ -113,13 +117,9 @@ final class FileSystemClient {
 					throw new PublicKeyNotStoredException();
 				}
 			} catch (RemoteException |
-					 CertificateException |
-					 KeyStoreException |
-					 InvalidRemoteArgumentException |
 					 NoSuchAlgorithmException |
 					 NotBoundException |
 					 PublicKeyNotStoredException |
-					 NullArgumentException |
 					 BlockTooSmallException exception) {
 				throw new FileSystemException("[FS_init]: " + exception.getMessage(), exception);
 			}
@@ -554,12 +554,15 @@ final class FileSystemClient {
 				}
 				return output;
 			} catch (RemoteException |
-					 KeyStoreException |
 					 NoSuchAlgorithmException |
 					 InvalidKeySpecException |
 					 NotBoundException exception) {
 				throw new FileSystemException("[FS_list] " + exception.getMessage(), exception);
 			}
+		}
+		
+		private PublicKey getPublicKey(){
+			return _cc_Auth.getPublicKey();
 		}
 		
 		private void exitCc_Auth() {
