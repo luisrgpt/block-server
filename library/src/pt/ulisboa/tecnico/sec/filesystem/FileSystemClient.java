@@ -16,7 +16,7 @@ import java.security.PublicKey;
 import java.security.SignatureException;
 import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedKeySpec;
+import java.security.spec.X509EncodedPublicKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -555,14 +555,14 @@ final class FileSystemClient {
 				
 				List<PublicKey> output= new ArrayList<>();
 		    	//Decode public key
-		    	byte[] encodedKey;
-		    	X509EncodedKeySpec publicKeySpec;
+		    	byte[] EncodedPublicKey;
+		    	X509EncodedPublicKeySpec publicKeySpec;
 		    	KeyFactory keyFactory;
 		    	PublicKey publicKey;
 				for(EncodedPublicKey encodedPublicKey: encodedPublicKeys){
 		        	//Decode public key
-		        	encodedKey = encodedPublicKey.getBytes();
-		        	publicKeySpec = new X509EncodedKeySpec(encodedKey);
+		        	EncodedPublicKey = encodedPublicKey.getBytes();
+		        	publicKeySpec = new X509EncodedPublicKeySpec(EncodedPublicKey);
 		        	keyFactory = KeyFactory.getInstance("RSA");
 		        	publicKey = keyFactory.generatePublic(publicKeySpec);
 					
