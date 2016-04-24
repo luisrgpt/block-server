@@ -85,6 +85,8 @@ final class FileSystemClient {
 		
 		private int _bytesRead;
 		private IAuth _cc_Auth;
+		
+		private final int portList[] = {1099, 1100, 1101, 1102} ;
 	
 		private FileSystemClientImpl() 
 				throws FileSystemException {
@@ -104,7 +106,7 @@ final class FileSystemClient {
 			
 				//Submit certificate
 				IFileSystemServer blockServer;
-				blockServer = getBlockServer();
+				blockServer = getBlockServer(1101);
 				
 				FileSystemServerReply keyServerReply = blockServer.storePubKey(new EncodedPublicKey(_cc_Auth.getPublicKey().getEncoded()));
 				
@@ -151,12 +153,12 @@ final class FileSystemClient {
 			return new BlockId(messageDigest.digest());
 		}
 		
-		private IFileSystemServer getBlockServer()
+		private IFileSystemServer getBlockServer(int port)
 				throws RemoteException, NotBoundException {
 			if (_blockServer == null) {
 				//Bind a RMI connection to BlockServer
 				Registry registry;
-				registry = LocateRegistry.getRegistry(1101);
+				registry = LocateRegistry.getRegistry(port);
 				_blockServer = (IFileSystemServer)registry.lookup(Constant.SERVICE_NAME);
 			}
 			return _blockServer;
@@ -181,7 +183,7 @@ final class FileSystemClient {
 						System.out.println("[getBlockTable] "+entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
 					}
 					System.out.println();
-					block = getBlockServer().get(_blockTable.get(-1)).getBytes();
+					block = getBlockServer(1101).get(_blockTable.get(-1)).getBytes();
 					_blockTable.remove(-1);
 					System.out.println("[getBlockTable] Returned2: " + Arrays.toString(block));
 					_blockTable.putAll(getBlockTable(block));
@@ -203,7 +205,7 @@ final class FileSystemClient {
 		//only applicable to hash blocks
 	  	private FileBlock getAndVerifyHashBlock(BlockId blockId, BlockId prevBlockId)
 	  			throws NoSuchAlgorithmException, TamperedBlockException, RemoteException, BlockNotFoundException, NotBoundException, InvalidRemoteArgumentException, NullArgumentException{
-	  		FileBlock block = getBlockServer().get(blockId);
+	  		FileBlock block = getBlockServer(1101).get(blockId);
 	  		
 	    	//Create block id using block's hash
 	    	MessageDigest messageDigest;
@@ -229,7 +231,7 @@ final class FileSystemClient {
 		//only applicable to hash blocks
 	  	private FileBlock getAndVerifyKeyBlock(BlockId fileId)
 	  			throws NoSuchAlgorithmException, TamperedBlockException, InvalidKeyException, SignatureException, RemoteException, BlockNotFoundException, NotBoundException, InvalidRemoteArgumentException, NullArgumentException{
-	  		FileBlock block = getBlockServer().get(fileId);
+	  		FileBlock block = getBlockServer(1101).get(fileId);
 			
 			byte[] data = new byte[Constant.BLOCK_LENGTH],
 			signatureData = new byte[block.getBytes().length - Constant.BLOCK_LENGTH];
@@ -303,9 +305,22 @@ final class FileSystemClient {
 			return blockTable;
 	  	}
 	  	
-	  	private void sendIndexBlocks(Map<Integer, BlockId> map)
+	  	
+	  	//send the blocks to each port on the portList
+	  	private void broadcastSendIndexBlocks(Map<Integer, BlockId> map, int portList[]) throws InvalidKeyException, RemoteException, NoSuchAlgorithmException, SignatureException, InvalidKeySpecException, NotBoundException, TamperedBlockException, InvalidRemoteArgumentException, NullArgumentException {
+	  		for(int i = 0; i< portList.length; i++) {
+	  			System.out.println("A enviar para o porto: " + portList[i]);
+	  			sendIndexBlocks(map, portList[i]);
+	  		}
+	  	}
+	  	
+	  	//esta tem de ser replicada por todos os servidores
+	  	private void sendIndexBlocks(Map<Integer, BlockId> map, int port)
 	  			throws RemoteException, NotBoundException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, InvalidKeySpecException, TamperedBlockException, InvalidRemoteArgumentException, NullArgumentException {
-			IFileSystemServer blockServer = getBlockServer();
+			
+	  		
+	  		
+	  		IFileSystemServer blockServer = getBlockServer(1101);
 	  		
 	  		int size = (int) Math.floor((double) (Constant.BLOCK_LENGTH - 4) / 68) - 1,
 					mapSize = map.size();
@@ -411,7 +426,7 @@ final class FileSystemClient {
 				checkArgumentsNonNullability(pos, contents);
 				
 				int size = contents.length;
-				IFileSystemServer blockServer = getBlockServer();
+				IFileSystemServer blockServer = getBlockServer(1101);
 				Map<Integer, BlockId> blockTable = getBlockTable(_fileId);
 		
 				List<byte[]> blockList = new ArrayList<>();
@@ -457,7 +472,8 @@ final class FileSystemClient {
 					index++;
 				}
 		
-				sendIndexBlocks(blockTable);
+				//sendIndexBlocks(blockTable);
+				broadcastSendIndexBlocks(blockTable, portList);
 			} catch (RemoteException |
 					 NotBoundException |
 					 NoSuchAlgorithmException |
@@ -480,7 +496,7 @@ final class FileSystemClient {
 				
 				int size = contents.length;
 				_bytesRead = 0;
-				IFileSystemServer blockServer = getBlockServer();
+				IFileSystemServer blockServer = getBlockServer(1101);
 				Map<Integer, BlockId> blockTable = getBlockTable(createBlockId(pk));
 				
 				byte[] currentBlock;
@@ -533,7 +549,7 @@ final class FileSystemClient {
 		private List<PublicKey> getPublicKeysFromFileSystemServer()
 				throws FileSystemException {
 			try {
-				IFileSystemServer blockServer = getBlockServer();
+				IFileSystemServer blockServer = getBlockServer(1101);
 				List<EncodedPublicKey> encodedPublicKeys= blockServer.readPubKeys();
 		  		
 				
