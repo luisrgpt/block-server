@@ -55,9 +55,9 @@ import java.net.URISyntaxException;
 
 final class FileSystemServer {
 	
-	FileSystemServer(char[] password)
+	FileSystemServer(char[] password, int port)
 			throws RemoteException, FileSystemServerException {
-		new FileSystemServerImpl(password);
+		new FileSystemServerImpl(password, port);
 	}
 	
 	private class FileSystemServerImpl extends UnicastRemoteObject implements IFileSystemServer {
@@ -82,7 +82,7 @@ final class FileSystemServer {
 		private Map<BlockId, FileBlock> _dataBase;
 		private Map<BlockId, BlockId> _keyBlockIdTable;
 		
-		private FileSystemServerImpl(char[] password)
+		private FileSystemServerImpl(char[] password, int port)
 				throws RemoteException, FileSystemServerException {
 			try {
 				//Checking parameters
@@ -108,7 +108,8 @@ final class FileSystemServer {
 				_pkStore = new ArrayList<EncodedPublicKey>();
 				
 		    	//Submit file system server
-		        Registry reg = LocateRegistry.createRegistry(Constant.REGISTRY_PORT);
+		        Registry reg = LocateRegistry.createRegistry(port);
+				//Registry reg = LocateRegistry.createRegistry(Constant.REGISTRY_PORT);
 				reg.rebind(Constant.SERVICE_NAME, (IFileSystemServer) this);
 		
 				//Naming.rebind("BlockServer", blockServer);

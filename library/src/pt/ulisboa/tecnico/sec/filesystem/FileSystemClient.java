@@ -156,7 +156,7 @@ final class FileSystemClient {
 			if (_blockServer == null) {
 				//Bind a RMI connection to BlockServer
 				Registry registry;
-				registry = LocateRegistry.getRegistry();
+				registry = LocateRegistry.getRegistry(1101);
 				_blockServer = (IFileSystemServer)registry.lookup(Constant.SERVICE_NAME);
 			}
 			return _blockServer;
