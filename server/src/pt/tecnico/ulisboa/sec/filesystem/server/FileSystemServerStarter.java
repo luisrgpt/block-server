@@ -12,10 +12,15 @@ public final class FileSystemServerStarter {
 	public static void main(String[] args)
 			throws FileSystemServerException, RemoteException {
 		
-		for(int i = 0; i<portList.length; i++) {
-			System.out.println(portList[i]);
+		int length = portList.length;
+		System.out.println("Initializing " + length + " file system servers:");
+		
+		for(int i = 0; i < length; i++) {
+			System.out.print(" " + portList[i] + "...");
 			new FileSystemServer(password, portList[i]);
+			System.out.println(" Done!");
 		}
-		System.out.println("File system server is online.");
+		
+		System.out.println("All " + length + " file systems servers have been initialized.");
 	}
 }
