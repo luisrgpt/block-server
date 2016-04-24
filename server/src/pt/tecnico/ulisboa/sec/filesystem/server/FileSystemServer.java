@@ -71,22 +71,23 @@ final class FileSystemServer {
 				                    KEY_STORE_NAME    = "keyStoreName",
 				                    FILE_NAME         = "FileSystemServer.class",
 				                    CERTIFICATE_ALIAS = "secretKeyAlias";
+		
+		//Attack flags
 		private boolean serverUnderAttack = true,
 				        canAttack         = false;
 		
-		//Key server attributes		
-		private ArrayList<EncodedPublicKey> _pkStore;
-		
-		
-		//Block server attributes
+		//Block server attribute
 		private Map<BlockId, FileBlock> _dataBase;
 		private Map<BlockId, BlockId> _keyBlockIdTable;
+		
+		//Key server attribute
+		private ArrayList<EncodedPublicKey> _pkStore;
 		
 		private FileSystemServerImpl(char[] password, int port)
 				throws RemoteException, FileSystemServerException {
 			try {
 				//Checking parameters
-				checkArgumentsNonNullability(password);
+				checkArgumentsNonNullability(password, port);
 				checkBlocksSize();
 				
 				//Set security policy
@@ -100,11 +101,11 @@ final class FileSystemServer {
 		            System.setSecurityManager(new SecurityManager());
 		        }
 				
-				//Initialise attributes
+				//Initialise block server attributes
 				_dataBase = new HashMap<>();
 				_keyBlockIdTable = new HashMap<>();
 				
-				//KeyStore 
+				//Initialise key server attribute 
 				_pkStore = new ArrayList<EncodedPublicKey>();
 				
 		    	//Submit file system server
@@ -117,7 +118,7 @@ final class FileSystemServer {
 					 URISyntaxException |
 					 IOException |
 					 NullArgumentException exception) {
-				throw new FileSystemServerException("[main]: " + exception.getMessage(), exception);
+				throw new FileSystemServerException("[" + port + "@main]: " + exception.getMessage(), exception);
 			}
 	    }
 	    
