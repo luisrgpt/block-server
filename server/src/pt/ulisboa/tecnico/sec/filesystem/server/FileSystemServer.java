@@ -2,7 +2,6 @@ package pt.ulisboa.tecnico.sec.filesystem.server;
 
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
-import java.rmi.server.UnicastRemoteObject;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -138,10 +137,6 @@ final class FileSystemServer {
 	  			throws FileSystemException {
 	  		//Check parameters
 	  		checkArgumentsNonNullability(blockId);
-	  		
-	  		/*if(!_pkStore.containsKey(processId)) {
-	  			throw new BlockNotFoundException();
-	  		}*/
   			
 	  		//Check if block exists
 	  		BlockId currentBlockId;
@@ -238,17 +233,25 @@ final class FileSystemServer {
 	    }
 	
 		@Override
-	  	public void storePubKey(ProcessId processId, Integer timeStamp, EncodedPublicKey encodedPublicKey, EncodedSignature encodedSignature)
+	  	public BlockId storePubKey(ProcessId processId, Integer timeStamp, EncodedPublicKey encodedPublicKey, EncodedSignature encodedSignature)
 	    		throws FileSystemException {
-			//Check parameters
-	    	checkArgumentsNonNullability(timeStamp, encodedPublicKey, encodedSignature);
-			
-			for(ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature> value : _pkStore.values()){
-				if(Arrays.equals(encodedPublicKey.getBytes(), value.getMiddle().getBytes())){
-					_pkStore.remove(value);
+			try {
+				//Check parameters
+		    	checkArgumentsNonNullability(timeStamp, encodedPublicKey, encodedSignature);
+				
+				for(ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature> value : _pkStore.values()){
+					if(Arrays.equals(encodedPublicKey.getBytes(), value.getMiddle().getBytes())){
+						_pkStore.remove(value);
+					}
 				}
+				_pkStore.put(processId, new ImmutableTriple<>(timeStamp, encodedPublicKey, encodedSignature));
+				_dataBase.put(encodedPublicKey, new HashMap<>());
+				
+				//Return block id
+				return createBlockId(encodedPublicKey.getBytes());
+			} catch (NoSuchAlgorithmException exception) {
+				throw new FileSystemException(exception.getMessage(), exception);
 			}
-			_pkStore.put(processId, new ImmutableTriple<>(timeStamp, encodedPublicKey, encodedSignature));
 		}
 	
 		@Override

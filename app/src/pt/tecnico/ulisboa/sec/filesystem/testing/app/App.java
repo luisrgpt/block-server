@@ -31,7 +31,7 @@ public class App {
 				FileSystem.FS_write(-10, buffer.length, buffer);			
 				FileSystem.FS_read(pk, -10, 5, size);
 				System.out.println(">>>>>>>>>>>>>>Test1 - Failed!");
-			}catch(ArrayIndexOutOfBoundsException e){
+			}catch(FileSystemException e){
 				System.out.println(">>>>>>>>>>>>>>Test1 - Passed!");
 				testsPassed++;
 			}

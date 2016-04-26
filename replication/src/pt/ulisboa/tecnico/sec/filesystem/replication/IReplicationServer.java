@@ -14,7 +14,7 @@ import pt.ulisboa.tecnico.sec.filesystem.common.ProcessId;
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
 
 public interface IReplicationServer {
-	void storePubKey(ProcessId processId, Integer timeStamp, EncodedPublicKey encodedPublicKey, EncodedSignature encodedSignature) throws FileSystemException;
+	BlockId storePubKey(ProcessId processId, Integer timeStamp, EncodedPublicKey encodedPublicKey, EncodedSignature encodedSignature) throws FileSystemException;
 	Set<ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>> readPubKeys() throws FileSystemException;
 	ImmutableTriple<Integer, FileBlock, EncodedSignature> get(ProcessId processId, BlockId blockId) throws FileSystemException;
   	BlockId put_k(ProcessId processId, Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature) throws FileSystemException;

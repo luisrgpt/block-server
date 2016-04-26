@@ -118,7 +118,7 @@ final class RmiNode extends UnicastRemoteObject
 	public void onSend(ProcessId processId, AckFlag ackFlag, Integer timeStamp, EncodedMac encodedMac)
 			throws FileSystemException, RemoteException {
 		//TODO: Implement me!
-		_clientFairLossPointToPointLinks.get(processId).onDeliver(processId, ackFlag, timeStamp, encodedMac);
+		_clientFairLossPointToPointLinks.get(processId).onDeliver(_process, ackFlag, timeStamp, encodedMac);
 	}
 
 	public void onSend(ProcessId processId, ReadFlag readFlag, Integer readId, BlockId blockId, EncodedMac encodedMac)
@@ -136,12 +136,12 @@ final class RmiNode extends UnicastRemoteObject
 	public void onSend(ProcessId processId, ValueFlag valueFlag, Integer readId, Set<ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>> encodedPublicKeys, EncodedMac encodedMac)
 			throws FileSystemException, RemoteException {
 		//TODO: Implement me!
-		_clientFairLossPointToPointLinks.get(processId).onDeliver(processId, valueFlag, readId, encodedPublicKeys, encodedMac);
+		_clientFairLossPointToPointLinks.get(processId).onDeliver(_process, valueFlag, readId, encodedPublicKeys, encodedMac);
 	}
 	
 	public void onSend(ProcessId processId, ValueFlag valueFlag, Integer readId, Integer timeStamp, FileBlock fileBlock, EncodedSignature encodedSignature, EncodedMac encodedMac)
 			throws FileSystemException, RemoteException {
-		_clientFairLossPointToPointLinks.get(processId).onDeliver(processId, valueFlag, readId, timeStamp, fileBlock, encodedSignature, encodedMac);
+		_clientFairLossPointToPointLinks.get(processId).onDeliver(_process, valueFlag, readId, timeStamp, fileBlock, encodedSignature, encodedMac);
 	}
 	
 	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature, EncodedMac encodedMac)

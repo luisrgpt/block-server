@@ -107,6 +107,7 @@ final class FileSystemClient {
 				_bytesRead = 0;
 				
 				_oneToNByzantineRegularRegister.onWrite();
+				_fileId = _blockId;
 			} catch (RemoteException |
 					 NotBoundException |
 					 BlockTooSmallException exception) {
@@ -353,33 +354,43 @@ final class FileSystemClient {
 			//}
 	  	}
 		
-		private int copyContent(int pos, int size, byte[] newBlock, byte[] content, int posContent) {
-			int indexA = posContent;
-			for(int indexB = pos,
-					limitA = size,
-					limitB = newBlock.length;
-					indexA < limitA &&
-					indexB < limitB;
-					indexA++, indexB++) {
-				newBlock[indexB] = content[indexA];
+		private int copyContent(int pos, int size, byte[] newBlock, byte[] content, int posContent)
+				throws FileSystemException {
+			try {
+				int indexA = posContent;
+				for(int indexB = pos,
+						limitA = size,
+						limitB = newBlock.length;
+						indexA < limitA &&
+						indexB < limitB;
+						indexA++, indexB++) {
+					newBlock[indexB] = content[indexA];
+				}
+				
+				return indexA;
+			} catch (ArrayIndexOutOfBoundsException exception) {
+				throw new FileSystemException(exception.getMessage(), exception);
 			}
-			
-			return indexA;
 		}
 		
-		private int extractContent(int pos, int size, byte[] newBlock, byte[] content, int posContent) {
-			int indexA = posContent;
-			for(int indexB = pos,
-					limitA = size,
-					limitB = newBlock.length;
-					indexA < limitA &&
-					indexB < limitB;
-					indexA++, indexB++) {
-				content[indexA] = newBlock[indexB];
-				_bytesRead++;
+		private int extractContent(int pos, int size, byte[] newBlock, byte[] content, int posContent)
+				throws FileSystemException {
+			try {
+				int indexA = posContent;
+				for(int indexB = pos,
+						limitA = size,
+						limitB = newBlock.length;
+						indexA < limitA &&
+						indexB < limitB;
+						indexA++, indexB++) {
+					content[indexA] = newBlock[indexB];
+					_bytesRead++;
+				}
+				
+				return indexA;
+			} catch (ArrayIndexOutOfBoundsException exception) {
+				throw new FileSystemException(exception.getMessage(), exception);
 			}
-			
-			return indexA;
 		}
 		
 		private void writeIntoFileSystemServer(int pos, byte[] contents)

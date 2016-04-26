@@ -42,7 +42,8 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 	
 	private IAuthenticator _iAuthenticator;
 	
-	private Integer _storageTimeStamp, _writeTimeStamp;
+	private Integer _writeTimeStamp;
+	private Map<ProcessId, Integer> _storageTimeStamps;
 	private Map<ProcessId, AckFlag> _ackList;
 	private int _readId;
 	private Map<ProcessId, ImmutablePair<Integer, FileBlock>> _readFileBlockList;
@@ -70,7 +71,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		_iAuthenticator = new CitizenCardMockupAuthenticator();
 		//_iAuthenticator = new CitizenCardAuthenticator();
 		
-		_storageTimeStamp = 0;
+		_storageTimeStamps = new HashMap<>();
 		_writeTimeStamp = 0;
 		_ackList = new HashMap<>();
 		_readId = 0;
@@ -136,29 +137,39 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 	
 	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature)
 			throws FileSystemException {
-		if(timeStamp > _storageTimeStamp) {
-			_storageTimeStamp = timeStamp;
-			_iReplicationServer.put_k(processId, timeStamp, keyBlock, encodedSignature);
+		BlockId blockId = null;
+
+		Integer storageTimeStamp = _storageTimeStamps.remove(processId);
+		if(timeStamp > storageTimeStamp) {
+			_storageTimeStamps.put(processId, timeStamp);
+			blockId = _iReplicationServer.put_k(processId, timeStamp, keyBlock, encodedSignature);
 		}
-		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(null), timeStamp);
+		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(blockId), timeStamp);
 	}
 	
 	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, HashBlock hashBlock, EncodedSignature encodedSignature)
 			throws FileSystemException {
-		if(timeStamp > _storageTimeStamp) {
-			_storageTimeStamp = timeStamp;
-			_iReplicationServer.put_h(processId, timeStamp, hashBlock, encodedSignature);
+		BlockId blockId = null;
+
+		Integer storageTimeStamp = _storageTimeStamps.remove(processId);
+		if(timeStamp > storageTimeStamp) {
+			_storageTimeStamps.put(processId, timeStamp);
+			blockId = _iReplicationServer.put_h(processId, timeStamp, hashBlock, encodedSignature);
 		}
-		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(null), timeStamp);
+		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(blockId), timeStamp);
 	}
 	
 	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, EncodedPublicKey encodedPublicKey, EncodedSignature encodedSignature)
 			throws FileSystemException {
-		if(timeStamp > _storageTimeStamp) {
-			_storageTimeStamp = timeStamp;
-			_iReplicationServer.storePubKey(processId, timeStamp, encodedPublicKey, encodedSignature);
+		BlockId blockId = null;
+		_storageTimeStamps.put(processId, 0);
+		
+		Integer storageTimeStamp = _storageTimeStamps.remove(processId);
+		if(timeStamp > storageTimeStamp) {
+			_storageTimeStamps.put(processId, timeStamp);
+			blockId = _iReplicationServer.storePubKey(processId, timeStamp, encodedPublicKey, encodedSignature);
 		}
-		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(null), timeStamp);
+		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(blockId), timeStamp);
 	}
 	
 	public void onDeliver(ProcessId processId, AckFlag ackFlag, Integer timeStamp) {
