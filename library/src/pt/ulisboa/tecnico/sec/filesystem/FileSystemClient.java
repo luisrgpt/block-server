@@ -134,7 +134,7 @@ final class FileSystemClient {
 		}
 
 		private BlockId createBlockId(PublicKey publicKey) throws NoSuchAlgorithmException {
-			byte[] encodedDigest = publicKey.getEncoded();
+			byte[] encodedDigest = publicKey.toString().getBytes();
 			MessageDigest messageDigest;
 			messageDigest = MessageDigest.getInstance("SHA-512");
 			messageDigest.update(encodedDigest);
@@ -147,7 +147,9 @@ final class FileSystemClient {
 				_blockTable = new HashMap<>();
 				
 				System.out.println("[getBlockTable] ID: " + Arrays.toString(fileId.getBytes()));
-				byte[] block = getAndVerifyKeyBlock(fileId).getBytes();
+				
+				_oneToNByzantineRegularRegister.onRead(fileId);
+				byte[] block = _fileBlock.getBytes();
 				
 				System.out.println("[getBlockTable] Returned: " + Arrays.toString(block));
 				
@@ -161,15 +163,15 @@ final class FileSystemClient {
 					}
 					System.out.println();
 					_oneToNByzantineRegularRegister.onRead(_blockTable.get(-1));
-					block = _blockId.getBytes();
+					block = _fileBlock.getBytes();
 					_blockTable.remove(-1);
 					System.out.println("[getBlockTable] Returned2: " + Arrays.toString(block));
 					_blockTable.putAll(getBlockTable(block));
 				}
 				_blockTable.remove(-1);
-				System.out.println("[getBlockTable] IdTable2");
+				System.out.println("[getBlockTable] IdTable3");
 				for (Map.Entry<Integer, BlockId> entry : _blockTable.entrySet()) {
-					System.out.println("[getBlockTable] " +entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
+					System.out.println("[getBlockTable] Returned3: " + entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
 				}
 				System.out.println();
 				
@@ -179,58 +181,6 @@ final class FileSystemClient {
 				return new HashMap<>();
 			}
 		}
-		
-		//only applicable to hash blocks
-	  	private FileBlock getAndVerifyHashBlock(BlockId blockId, BlockId prevBlockId)
-	  			throws FileSystemException {
-	  		try {
-		  		_oneToNByzantineRegularRegister.onRead(blockId);
-		  		FileBlock fileBlock = _fileBlock;
-		  		
-		    	//Create block id using block's hash
-		    	MessageDigest messageDigest;
-				messageDigest = MessageDigest.getInstance("SHA-512");
-				try{
-					messageDigest.update(fileBlock.getBytes());
-				}catch( NullPointerException e){
-					System.out.println("Could not get the block bytes");
-				}
-				
-		    	byte[] hash = messageDigest.digest();
-		    
-		    	if(prevBlockId==null || Arrays.equals(hash, prevBlockId.getBytes()) || _previousBlockTable.isEmpty()){
-		    		//then return block
-		    		return fileBlock;
-		    	}else{
-		    		//else throw exception
-		    		throw new TamperedBlockException();
-		    	}
-			} catch (NoSuchAlgorithmException exception) {
-				throw new FileSystemException(exception.getMessage(), exception);
-			}
-	  	}
-	  	
-		//only applicable to hash blocks
-	  	private FileBlock getAndVerifyKeyBlock(BlockId fileId)
-	  			throws FileSystemException {
-	  		_oneToNByzantineRegularRegister.onRead(fileId);
-	  		FileBlock fileBlock = _fileBlock;
-			
-			byte[] data = new byte[Constant.BLOCK_LENGTH],
-			signatureData = new byte[fileBlock.getBytes().length - Constant.BLOCK_LENGTH];
-	  		
-			System.arraycopy(fileBlock.getBytes(), 0, data, 0, Constant.BLOCK_LENGTH);
-			System.arraycopy(fileBlock.getBytes(), Constant.BLOCK_LENGTH, signatureData, 0, signatureData.length);
-	    
-	    	//Verify signature
-	    	//if(_cc_Auth.verifySignature(signatureData, data)){
-	    		//then return block
-	    		return fileBlock;
-	    	//}else{
-	    		//else throw exception
-	    		//throw new TamperedBlockException();
-	    	//}
-	  	}
 		
 	  	private byte[] getBytes(int i) {
 			ByteBuffer dbuf = ByteBuffer.allocate(4);
@@ -296,14 +246,22 @@ final class FileSystemClient {
 			//if(size < mapSize) {
 				int blockSize = (int) Math.ceil((double) mapSize / size),
 					firstKey, lastKey;
-				System.out.println("[sendIndexBlocks] blockSize = " + blockSize +
-						" size = " + size + 
-						" mapSize = " + mapSize);
+				System.out.println("[sendIndexBlocks] blockSize = " + blockSize + " size = " + size + " mapSize = " + mapSize);
 				List<Integer> keyList = new ArrayList<Integer>(map.keySet());
 				List<BlockId> valueList = new ArrayList<BlockId>(map.values());
-				for(int index = size - 1; index >= 0; index--) {
+				
+				System.out.println("[sendIndexBlocks] Key set = " + Arrays.toString(keyList.toArray()));
+				for(BlockId value: valueList) {
+					System.out.println("[sendIndexBlocks] Value set = " + Arrays.toString(value.getBytes()));
+				}
+				
+				for(int index = Math.min(size, mapSize) - 1; index >= 0; index--) {
 					firstKey = blockSize * index;
 					lastKey = Math.min(firstKey + blockSize, mapSize);
+					
+					System.out.println("[sendIndexBlocks] Index     = " + index);
+					System.out.println("[sendIndexBlocks] First key = " + firstKey);
+					System.out.println("[sendIndexBlocks] Last key  = " + lastKey);
 					
 					List<Integer> keySubList = new ArrayList<>(keyList.subList(firstKey, lastKey));
 					List<BlockId> valueSubList = new ArrayList<>(valueList.subList(firstKey, lastKey));
@@ -312,11 +270,11 @@ final class FileSystemClient {
 					valueSubList.add(blockId);
 					
 					for (Integer entry : keySubList) {
-						System.out.println("[sendindexBlocks] keySublist: "+entry);
+						System.out.println("[sendindexBlocks] keySublist: " + entry);
 					}
 					
 					for (BlockId entry : valueSubList) {
-						System.out.println("[sendindexBlocks] valueSubList: "+Arrays.toString(entry.getBytes()));
+						System.out.println("[sendindexBlocks] valueSubList: " + Arrays.toString(entry.getBytes()));
 					}
 					
 					byte[] array = getBytes(keySubList, valueSubList);
@@ -393,11 +351,43 @@ final class FileSystemClient {
 			}
 		}
 		
+		//only applicable to hash blocks
+	  	private FileBlock getAndVerifyHashBlock(BlockId blockId, BlockId prevBlockId)
+	  			throws FileSystemException {
+	  		try {
+		  		_oneToNByzantineRegularRegister.onRead(blockId);
+		  		FileBlock fileBlock = _fileBlock;
+		  		
+		    	//Create block id using block's hash
+		    	MessageDigest messageDigest;
+				messageDigest = MessageDigest.getInstance("SHA-512");
+				try{
+					messageDigest.update(fileBlock.getBytes());
+				}catch( NullPointerException e){
+					System.out.println("Could not get the block bytes");
+				}
+				
+		    	byte[] hash = messageDigest.digest();
+		    
+		    	if(prevBlockId==null || Arrays.equals(hash, prevBlockId.getBytes()) || _previousBlockTable.isEmpty()){
+		    		//then return block
+		    		return fileBlock;
+		    	}else{
+		    		//else throw exception
+		    		throw new TamperedBlockException();
+		    	}
+			} catch (NoSuchAlgorithmException exception) {
+				throw new FileSystemException(exception.getMessage(), exception);
+			}
+	  	}
+		
 		private void writeIntoFileSystemServer(int pos, byte[] contents)
 				throws FileSystemException {
 			try {
 				//Check parameters
 				checkArgumentsNonNullability(pos, contents);
+				
+				System.out.println("[FS_Write] Content: " + Arrays.toString(contents));
 				
 				int size = contents.length;
 				Map<Integer, BlockId> blockTable = getBlockTable(_fileId);
@@ -407,24 +397,27 @@ final class FileSystemClient {
 				int firstKey = (int) Math.floor((double) pos / Constant.BLOCK_LENGTH),
 				    lastKey = (int) Math.ceil(((double) pos + size) / Constant.BLOCK_LENGTH),
 				    posContent = 0;
+				
+				System.out.println("[FS_Write] FirstKey: " + firstKey + "; LastKey: " + lastKey);
 		
 				if(blockTable.containsKey((Integer) firstKey)) {
 					_oneToNByzantineRegularRegister.onRead(blockTable.remove(firstKey)); 
-					currentBlock = _blockId.getBytes();
+					currentBlock = _fileBlock.getBytes();
 				} else {
 					currentBlock = new byte[Constant.BLOCK_LENGTH];
 				}
 				
 				posContent = copyContent(pos % Constant.BLOCK_LENGTH, size, currentBlock, contents, posContent);
 		
-				System.out.println("[FS_Write] new content: "+Arrays.toString(currentBlock));
+				System.out.println("[FS_Write] Block 0: " + Arrays.toString(currentBlock));
 				blockList.add(currentBlock);
-		
-				System.out.println("[FS_Write] FirstKey: " + firstKey + "; LastKey: " + lastKey);
-				if(lastKey != firstKey + 1 || (pos + size) % Constant.BLOCK_LENGTH != 0) {
+
+				if(lastKey > firstKey + 1 || (pos + size) >= Constant.BLOCK_LENGTH) {
 					for (int index = firstKey + 1; index <= lastKey; index++) {
 						if(blockTable.containsKey((Integer) index)) {
-							currentBlock = getAndVerifyHashBlock(blockTable.remove(index),_previousBlockTable.remove(index)).getBytes();
+							//currentBlock = getAndVerifyHashBlock(blockTable.remove(index),_previousBlockTable.remove(index)).getBytes();
+							_oneToNByzantineRegularRegister.onRead(blockTable.remove(index));
+							currentBlock = _fileBlock.getBytes();
 						} else {
 							currentBlock = new byte[Constant.BLOCK_LENGTH];
 						}
@@ -432,7 +425,7 @@ final class FileSystemClient {
 						System.out.println("[FS_Write] Pos: " + posContent + "; index: " + index + "; size: " + size);
 						posContent = copyContent(0, size, currentBlock, contents, posContent);
 		
-						System.out.println("[FS_Write] "+Arrays.toString(currentBlock));
+						System.out.println("[FS_Write] Block " + index + ": " + Arrays.toString(currentBlock));
 						blockList.add(currentBlock);
 					}
 				}
@@ -471,22 +464,26 @@ final class FileSystemClient {
 				    lastKey = (int) Math.ceil((double) ((pos + size) / Constant.BLOCK_LENGTH)),
 				    posContent = 0;
 				
+				System.out.println("[FS_Read]  FirstKey: " + firstKey + "; LastKey: " + lastKey);
+				
 				if(blockTable.containsKey((Integer) firstKey)) {
 					_oneToNByzantineRegularRegister.onRead(blockTable.remove(firstKey));
-					currentBlock = _blockId.getBytes();
+					currentBlock = _fileBlock.getBytes();
 				} else {
 					currentBlock = new byte[Constant.BLOCK_LENGTH];
 				}
 				
 				posContent = extractContent(pos % Constant.BLOCK_LENGTH, size, currentBlock, contents, posContent);
-		
-				System.out.println("[FS_Read]: "+Arrays.toString(currentBlock));
-				System.out.println("[FS_Read]: "+Arrays.toString(contents));
 				
-				if(lastKey != firstKey + 1 || (pos + size) % Constant.BLOCK_LENGTH != 0) {
+				System.out.println("[FS_Read]  Block 0: " + Arrays.toString(currentBlock));
+				System.out.println("[FS_Read]: " + Arrays.toString(contents));
+				
+				if(lastKey > firstKey + 1 || (pos + size) >= Constant.BLOCK_LENGTH) {
 					for (int index = firstKey + 1; index <= lastKey; index++) {
 						if(blockTable.containsKey((Integer) index)) {
-							currentBlock = getAndVerifyHashBlock(blockTable.remove(index), _previousBlockTable.get(index)).getBytes();
+							//currentBlock = getAndVerifyHashBlock(blockTable.remove(index),_previousBlockTable.get(index)).getBytes();
+							_oneToNByzantineRegularRegister.onRead(blockTable.remove(index));
+							currentBlock = _fileBlock.getBytes();
 						} else {
 							System.out.print("new block");
 							currentBlock = new byte[Constant.BLOCK_LENGTH];
@@ -540,6 +537,7 @@ final class FileSystemClient {
 		
 		public void onWriteReturn(AckFlag ackFlag) {
 			_blockId = ackFlag.getBlockId();
+			System.out.println("[onWriteReturn] : " + Arrays.toString(_blockId.getBytes()));
 		}
 		
 		public void onReadReturn(FileBlock fileBlock) {

@@ -7,6 +7,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -102,7 +103,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 	
 	public void onWrite()
 			throws FileSystemException {
-		byte[] encodedPublicKey = _publicKey.getEncoded();
+		byte[] encodedPublicKey = _publicKey.toString().getBytes();
 		EncodedSignature encodedSignature = onWrite(encodedPublicKey);
 		for(ProcessId process : _processes) {
 			_authPerfectPointToPointLinks.onSend(process, new WriteFlag(), _writeTimeStamp, new EncodedPublicKey(encodedPublicKey), encodedSignature);
@@ -114,9 +115,11 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		_ackList = new HashMap<>();
 		
 		byte[] classData = AuthenticatedDataByzantineQuorumAlgorithm.class.getName().getBytes(),
-			   selfData = _publicKey.getEncoded(),
+			   selfData = _publicKey.toString().getBytes(),
 			   flagData = WriteFlag.class.getName().getBytes(),
 			   timeStampData = _writeTimeStamp.toString().getBytes();
+		
+		System.out.println("[onWrite]   " + Arrays.toString(data));
 		
 		int classLength = classData.length,
 			selfLength = selfData.length,
@@ -130,7 +133,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
     	System.arraycopy(flagData, 0, content, classLength + selfLength, flagLength);
     	System.arraycopy(timeStampData, 0, content, classLength + selfLength + flagLength, timeStampLength);
     	System.arraycopy(data, 0, content, classLength + selfLength + flagLength + timeStampLength, dataLength);
-		
+    	
 		//Create encoded signature
 		return new EncodedSignature(_iAuthenticator.signData(content));
 	}
@@ -214,7 +217,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 			throws FileSystemException {
 		try {
 			byte[] classData = AuthenticatedDataByzantineQuorumAlgorithm.class.getName().getBytes(),
-				   selfData = _publicKey.getEncoded(),
+				   selfData = _publicKey.toString().getBytes(),
 				   flagData = WriteFlag.class.getName().getBytes(),
 				   timeStampData = timeStamp.toString().getBytes(),
 				   fileBlockData = fileBlock.getBytes();
@@ -224,18 +227,18 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 				flagLength = flagData.length,
 				timeStampLength = timeStampData.length,
 				dataLength = fileBlockData.length;
-			
+				
 			byte[] content = new byte[classLength + selfLength + flagLength + timeStampLength + dataLength];
 	    	System.arraycopy(classData, 0, content, 0, classLength);
 	    	System.arraycopy(selfData, 0, content, classLength, selfLength);    	
 	    	System.arraycopy(flagData, 0, content, classLength + selfLength, flagLength);
 	    	System.arraycopy(timeStampData, 0, content, classLength + selfLength + flagLength, timeStampLength);
 	    	System.arraycopy(fileBlockData, 0, content, classLength + selfLength + flagLength + timeStampLength, dataLength);
-			
+		    	
 			//Verify signature
 	    	Signature signature = Signature.getInstance("SHA1withRSA");
 	    	signature.initVerify(_publicKey);
-	    	signature.update(_iAuthenticator.signData(content));
+	    	signature.update(content);
 	    	if(!signature.verify(encodedSignature.getBytes())) {
 	    		System.out.println("Verification failed!");
 	    		throw new TamperedBlockException();
@@ -286,7 +289,6 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 				selfData = publicKeyData;
 				flagData = WriteFlag.class.getName().getBytes();
 				timeStampData = timeStamp.toString().getBytes();
-					   
 				
 				classLength = classData.length;
 				selfLength = selfData.length;
@@ -300,12 +302,12 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		    	System.arraycopy(flagData, 0, content, classLength + selfLength, flagLength);
 		    	System.arraycopy(timeStampData, 0, content, classLength + selfLength + flagLength, timeStampLength);
 		    	System.arraycopy(publicKeyData, 0, content, classLength + selfLength + flagLength + timeStampLength, dataLength);
-					
+		    	
 				//Verify signature
 		    	signature = Signature.getInstance("SHA1withRSA");
 		    	signature.initVerify(_publicKey);
-		    	signature.update(entry.getRight().getBytes());
-		    	if(!signature.verify(content)) {
+		    	signature.update(content);
+		    	if(!signature.verify(entry.getRight().getBytes())) {
 		    		System.out.println("Verification failed!");
 		    		throw new TamperedBlockException();
 		    	}

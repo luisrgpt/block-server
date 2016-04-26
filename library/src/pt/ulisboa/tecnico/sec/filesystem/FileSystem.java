@@ -36,6 +36,14 @@ public final class FileSystem {
 		}
 	}
 	
+	private static void checkPositionValue(int pos)
+			throws FileSystemException {
+		//Check position value
+		if(pos < 0) {
+			throw new FileSystemException("Position value is negative.");
+		}
+	}
+	
 	private static void checkContentSize(int size, byte[] contents)
 			throws FileSystemException {
 		//Check content size
@@ -58,6 +66,7 @@ public final class FileSystem {
 			throws FileSystemException {
 		//Check parameters
 		checkArgumentsNonNullability(pos, size, contents);
+		checkPositionValue(pos);
 		checkContentSize(size, contents);
 		checkFileSystemClientNonNullability();
 		
@@ -68,6 +77,7 @@ public final class FileSystem {
 			throws FileSystemException {
 		//Check parameters
 		checkArgumentsNonNullability(pk, pos, size, nRead);
+		checkPositionValue(pos);
 		checkFileSystemClientNonNullability();
 		
 		byte[] result = new byte[size];
