@@ -3,6 +3,8 @@
 	<classpathentry kind="src" path="src"/>
 	<classpathentry kind="con" path="org.eclipse.jdt.launching.JRE_CONTAINER"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/common-types"/>
-	<classpathentry kind="lib" path="/home/lribeirogomes/git/sec/replication/lib/commons-lang3-3.4.jar"/>
+	<classpathentry kind="lib" path="/home/lribeirogomes/git/sec/lib/commons-lang3-3.4.jar"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/cc-authentication"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/exceptions"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>

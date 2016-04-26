@@ -3,46 +3,37 @@ package pt.ulisboa.tecnico.sec.filesystem;
 import java.nio.ByteBuffer;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.security.InvalidKeyException;
 import java.security.KeyFactory;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.KeyStoreException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
-import java.security.SignatureException;
-import java.security.cert.CertificateException;
 import java.security.spec.InvalidKeySpecException;
-import java.security.spec.X509EncodedPublicKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
-import ccauth.CC_Auth;
-import ccauth.CC_Mockup;
-import ccauth.IAuth;
-import pt.tecnico.ulisboa.sec.filesystem.common.BlockId;
-import pt.tecnico.ulisboa.sec.filesystem.common.Constant;
-import pt.tecnico.ulisboa.sec.filesystem.common.EncodedCertificate;
-import pt.tecnico.ulisboa.sec.filesystem.common.EncodedPublicKey;
-import pt.tecnico.ulisboa.sec.filesystem.common.EncodedSignature;
-import pt.tecnico.ulisboa.sec.filesystem.common.FileBlock;
-import pt.tecnico.ulisboa.sec.filesystem.common.FileSystemServerReply;
-import pt.tecnico.ulisboa.sec.filesystem.common.HashBlock;
-import pt.tecnico.ulisboa.sec.filesystem.common.IFileSystemServer;
-import pt.tecnico.ulisboa.sec.filesystem.common.KeyBlock;
-import pt.tecnico.ulisboa.sec.filesystem.common.exception.BlockNotFoundException;
-import pt.tecnico.ulisboa.sec.filesystem.common.exception.BlockTooSmallException;
-import pt.tecnico.ulisboa.sec.filesystem.common.exception.InvalidRemoteArgumentException;
-import pt.tecnico.ulisboa.sec.filesystem.common.exception.NullArgumentException;
-import pt.tecnico.ulisboa.sec.filesystem.common.exception.PublicKeyNotStoredException;
-import pt.tecnico.ulisboa.sec.filesystem.common.exception.TamperedBlockException;
-import pt.ulisboa.tecnico.sec.filesystem.exception.FileSystemException;
+import pt.ulisboa.tecnico.sec.filesystem.common.AckFlag;
+import pt.ulisboa.tecnico.sec.filesystem.common.BlockId;
+import pt.ulisboa.tecnico.sec.filesystem.common.Constant;
+import pt.ulisboa.tecnico.sec.filesystem.common.EncodedPublicKey;
+import pt.ulisboa.tecnico.sec.filesystem.common.FileBlock;
+import pt.ulisboa.tecnico.sec.filesystem.common.HashBlock;
+import pt.ulisboa.tecnico.sec.filesystem.common.KeyBlock;
+import pt.ulisboa.tecnico.sec.filesystem.common.ProcessId;
+import pt.ulisboa.tecnico.sec.filesystem.common.ProcessType;
+import pt.ulisboa.tecnico.sec.filesystem.common.exception.BlockNotFoundException;
+import pt.ulisboa.tecnico.sec.filesystem.common.exception.BlockTooSmallException;
+import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
+import pt.ulisboa.tecnico.sec.filesystem.common.exception.InvalidRemoteArgumentException;
+import pt.ulisboa.tecnico.sec.filesystem.common.exception.NullArgumentException;
+import pt.ulisboa.tecnico.sec.filesystem.common.exception.TamperedBlockException;
+import pt.ulisboa.tecnico.sec.filesystem.replication.AuthenticatedDataByzantineQuorumAlgorithm;
+import pt.ulisboa.tecnico.sec.filesystem.replication.OneToNByzantineRegularRegister;
+import pt.ulisboa.tecnico.sec.filesystem.replication.OneToNByzantineRegularRegisterListener;
 
 final class FileSystemClient {
 	
@@ -68,25 +59,31 @@ final class FileSystemClient {
 		return _fileSystemClientImpl.getPublicKeysFromFileSystemServer();
 	}
 
-	void exitCc_Auth() {
-		_fileSystemClientImpl.exitCc_Auth();
+	public void exit() {
+		_fileSystemClientImpl.exit();
 	}
 
 	PublicKey getClientPublicKey(){
 		return _fileSystemClientImpl.getPublicKey();
 	}
 	
-	private class FileSystemClientImpl {
+	private class FileSystemClientImpl
+			implements OneToNByzantineRegularRegisterListener {
+		private OneToNByzantineRegularRegister _oneToNByzantineRegularRegister;
+		
 		private BlockId _fileId;
-		private IFileSystemServer _blockServer;
 	
 		private Map<Integer, BlockId> _blockTable;
 		private Map<Integer, BlockId> _previousBlockTable;
 		
 		private int _bytesRead;
-		private IAuth _cc_Auth;
 		
 		private final int portList[] = {1099, 1100, 1101, 1102} ;
+		private final int port = 1104;
+		
+		private Set<EncodedPublicKey> _encodedPublicKeys;
+		private FileBlock _fileBlock;
+		private BlockId _blockId;
 	
 		private FileSystemClientImpl() 
 				throws FileSystemException {
@@ -94,39 +91,29 @@ final class FileSystemClient {
 				//Check parameters
 				checkBlocksSize();
 				
+				ProcessId processes[] = new ProcessId[portList.length];
+				for(int index = 0; index < portList.length; ++index) {
+					processes[index] = new ProcessId(portList[index], ProcessType.SERVER);
+				}
+				
+				_oneToNByzantineRegularRegister = new AuthenticatedDataByzantineQuorumAlgorithm(processes, new ProcessId(port, ProcessType.CLIENT), this);
+				
 				//Initialise attributes
 				_fileId = null;
-				_blockServer = null;
 				
 				_blockTable = new HashMap<>();
 				_previousBlockTable = new HashMap<>();
 				
 				_bytesRead = 0;
-				_cc_Auth = new CC_Mockup();
-			
-				//Submit certificate
-				IFileSystemServer blockServer;
-				blockServer = getBlockServer(1101);
 				
-				FileSystemServerReply keyServerReply = blockServer.storePubKey(new EncodedPublicKey(_cc_Auth.getPublicKey().getEncoded()));
-				
-				switch(keyServerReply) {
-				case ACK:
-					//Set file id
-					_fileId = createBlockId(_cc_Auth.getPublicKey());
-					break;
-				case NACK:
-					throw new PublicKeyNotStoredException();
-				}
+				_oneToNByzantineRegularRegister.onWrite();
 			} catch (RemoteException |
-					 NoSuchAlgorithmException |
 					 NotBoundException |
-					 PublicKeyNotStoredException |
 					 BlockTooSmallException exception) {
 				throw new FileSystemException("[FS_init]: " + exception.getMessage(), exception);
 			}
 		}
-		
+
 		@SuppressWarnings("unused")
 		private void checkBlocksSize()
 				throws BlockTooSmallException {
@@ -152,20 +139,9 @@ final class FileSystemClient {
 			messageDigest.update(encodedDigest);
 			return new BlockId(messageDigest.digest());
 		}
-		
-		private IFileSystemServer getBlockServer(int port)
-				throws RemoteException, NotBoundException {
-			if (_blockServer == null) {
-				//Bind a RMI connection to BlockServer
-				Registry registry;
-				registry = LocateRegistry.getRegistry(port);
-				_blockServer = (IFileSystemServer)registry.lookup(Constant.SERVICE_NAME);
-			}
-			return _blockServer;
-		}
 	
 		private Map<Integer, BlockId> getBlockTable(BlockId fileId)
-				throws NotBoundException, TamperedBlockException, RemoteException, InvalidKeyException, NoSuchAlgorithmException, SignatureException, InvalidRemoteArgumentException, NullArgumentException {
+				throws FileSystemException {
 			try {
 				_blockTable = new HashMap<>();
 				
@@ -180,10 +156,11 @@ final class FileSystemClient {
 				while(!_blockTable.get(-1).equals(nullPointer)) {
 					System.out.println("[getBlockTable] IdTable2");
 					for (Map.Entry<Integer, BlockId> entry : _blockTable.entrySet()) {
-						System.out.println("[getBlockTable] "+entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
+						System.out.println("[getBlockTable] " + entry.getKey() + " -> " + Arrays.toString(entry.getValue().getBytes()));
 					}
 					System.out.println();
-					block = getBlockServer(1101).get(_blockTable.get(-1)).getBytes();
+					_oneToNByzantineRegularRegister.onRead(_blockTable.get(-1));
+					block = _blockId.getBytes();
 					_blockTable.remove(-1);
 					System.out.println("[getBlockTable] Returned2: " + Arrays.toString(block));
 					_blockTable.putAll(getBlockTable(block));
@@ -204,49 +181,54 @@ final class FileSystemClient {
 		
 		//only applicable to hash blocks
 	  	private FileBlock getAndVerifyHashBlock(BlockId blockId, BlockId prevBlockId)
-	  			throws NoSuchAlgorithmException, TamperedBlockException, RemoteException, BlockNotFoundException, NotBoundException, InvalidRemoteArgumentException, NullArgumentException{
-	  		FileBlock block = getBlockServer(1101).get(blockId);
-	  		
-	    	//Create block id using block's hash
-	    	MessageDigest messageDigest;
-			messageDigest = MessageDigest.getInstance("SHA-512");
-			try{
-				messageDigest.update(block.getBytes());
-			}catch( NullPointerException e){
-				System.out.println("Could not get the block bytes");
+	  			throws FileSystemException {
+	  		try {
+		  		_oneToNByzantineRegularRegister.onRead(blockId);
+		  		FileBlock fileBlock = _fileBlock;
+		  		
+		    	//Create block id using block's hash
+		    	MessageDigest messageDigest;
+				messageDigest = MessageDigest.getInstance("SHA-512");
+				try{
+					messageDigest.update(fileBlock.getBytes());
+				}catch( NullPointerException e){
+					System.out.println("Could not get the block bytes");
+				}
+				
+		    	byte[] hash = messageDigest.digest();
+		    
+		    	if(prevBlockId==null || Arrays.equals(hash, prevBlockId.getBytes()) || _previousBlockTable.isEmpty()){
+		    		//then return block
+		    		return fileBlock;
+		    	}else{
+		    		//else throw exception
+		    		throw new TamperedBlockException();
+		    	}
+			} catch (NoSuchAlgorithmException exception) {
+				throw new FileSystemException(exception.getMessage(), exception);
 			}
-			
-	    	byte[] hash = messageDigest.digest();
-	    
-	    	if(prevBlockId==null || Arrays.equals(hash, prevBlockId.getBytes()) || _previousBlockTable.isEmpty()){
-	    		//then return block
-	    		return block;
-	    	}else{
-	    		//else throw exception
-	    		throw new TamperedBlockException();
-	    	}
-	    	
 	  	}
 	  	
 		//only applicable to hash blocks
 	  	private FileBlock getAndVerifyKeyBlock(BlockId fileId)
-	  			throws NoSuchAlgorithmException, TamperedBlockException, InvalidKeyException, SignatureException, RemoteException, BlockNotFoundException, NotBoundException, InvalidRemoteArgumentException, NullArgumentException{
-	  		FileBlock block = getBlockServer(1101).get(fileId);
+	  			throws FileSystemException {
+	  		_oneToNByzantineRegularRegister.onRead(fileId);
+	  		FileBlock fileBlock = _fileBlock;
 			
 			byte[] data = new byte[Constant.BLOCK_LENGTH],
-			signatureData = new byte[block.getBytes().length - Constant.BLOCK_LENGTH];
+			signatureData = new byte[fileBlock.getBytes().length - Constant.BLOCK_LENGTH];
 	  		
-			System.arraycopy(block.getBytes(), 0, data, 0, Constant.BLOCK_LENGTH);
-			System.arraycopy(block.getBytes(), Constant.BLOCK_LENGTH, signatureData, 0, signatureData.length);
+			System.arraycopy(fileBlock.getBytes(), 0, data, 0, Constant.BLOCK_LENGTH);
+			System.arraycopy(fileBlock.getBytes(), Constant.BLOCK_LENGTH, signatureData, 0, signatureData.length);
 	    
 	    	//Verify signature
-	    	if(_cc_Auth.verifySignature(signatureData, data)){
+	    	//if(_cc_Auth.verifySignature(signatureData, data)){
 	    		//then return block
-	    		return block;
-	    	}else{
+	    		return fileBlock;
+	    	//}else{
 	    		//else throw exception
-	    		throw new TamperedBlockException();
-	    	}
+	    		//throw new TamperedBlockException();
+	    	//}
 	  	}
 		
 	  	private byte[] getBytes(int i) {
@@ -304,24 +286,9 @@ final class FileSystemClient {
 			
 			return blockTable;
 	  	}
-	  	
-	  	
-	  	//send the blocks to each port on the portList
-	  	private void broadcastSendIndexBlocks(Map<Integer, BlockId> map, int portList[]) throws InvalidKeyException, RemoteException, NoSuchAlgorithmException, SignatureException, InvalidKeySpecException, NotBoundException, TamperedBlockException, InvalidRemoteArgumentException, NullArgumentException {
-	  		for(int i = 0; i< portList.length; i++) {
-	  			System.out.println("A enviar para o porto: " + portList[i]);
-	  			sendIndexBlocks(map, portList[i]);
-	  		}
-	  	}
-	  	
-	  	//esta tem de ser replicada por todos os servidores
-	  	private void sendIndexBlocks(Map<Integer, BlockId> map, int port)
-	  			throws RemoteException, NotBoundException, NoSuchAlgorithmException, InvalidKeyException, SignatureException, InvalidKeySpecException, TamperedBlockException, InvalidRemoteArgumentException, NullArgumentException {
-			
-	  		
-	  		
-	  		IFileSystemServer blockServer = getBlockServer(1101);
-	  		
+
+	  	private void sendIndexBlocks(Map<Integer, BlockId> map)
+	  			throws FileSystemException {
 	  		int size = (int) Math.floor((double) (Constant.BLOCK_LENGTH - 4) / 68) - 1,
 					mapSize = map.size();
 			BlockId blockId = new BlockId(new byte[64]);
@@ -353,17 +320,13 @@ final class FileSystemClient {
 					
 					byte[] array = getBytes(keySubList, valueSubList);
 					if(index > 0) {
-						blockId = blockServer.put_h(new HashBlock(array));
+						_oneToNByzantineRegularRegister.onWrite(new HashBlock(array));
+						blockId = _blockId;
 					} else {
 						//Create key block
 						KeyBlock keyBlock = new KeyBlock(array);
 					
-						//Create encoded signature
-						EncodedSignature encodedSignature = new EncodedSignature(_cc_Auth.signData(keyBlock.getBytes()));
-					
-						//Create encoded public key
-						EncodedPublicKey encodedPublicKey = new EncodedPublicKey(_cc_Auth.getPublicKey().getEncoded());
-						if(AttackFlag.isBeingTampered()){
+						/*if(AttackFlag.isBeingTampered()){
 							//After generate the signature with the data we should change the block content
 							System.out.println("Tampering data...");
 							keyBlock = new KeyBlock("U were cracked!".getBytes());
@@ -380,9 +343,9 @@ final class FileSystemClient {
 							EncodedPublicKey fakeEncodedPublicKey = new EncodedPublicKey(keys.getPublic().getEncoded());
 							encodedPublicKey = fakeEncodedPublicKey;
 							AttackFlag.deactivateImpersonationFlag();
-						}
+						}*/
 						
-						blockServer.put_k(keyBlock, encodedSignature, encodedPublicKey);
+						_oneToNByzantineRegularRegister.onWrite(keyBlock);
 					}
 					
 					System.out.println();
@@ -426,7 +389,6 @@ final class FileSystemClient {
 				checkArgumentsNonNullability(pos, contents);
 				
 				int size = contents.length;
-				IFileSystemServer blockServer = getBlockServer(1101);
 				Map<Integer, BlockId> blockTable = getBlockTable(_fileId);
 		
 				List<byte[]> blockList = new ArrayList<>();
@@ -436,7 +398,8 @@ final class FileSystemClient {
 				    posContent = 0;
 		
 				if(blockTable.containsKey((Integer) firstKey)) {
-					currentBlock = blockServer.get(blockTable.remove(firstKey)).getBytes(); 
+					_oneToNByzantineRegularRegister.onRead(blockTable.remove(firstKey)); 
+					currentBlock = _blockId.getBytes();
 				} else {
 					currentBlock = new byte[Constant.BLOCK_LENGTH];
 				}
@@ -466,22 +429,16 @@ final class FileSystemClient {
 				BlockId blockId;
 				int index = firstKey;
 				for(byte[] block : blockList) {
-					blockId = blockServer.put_h(new HashBlock(block));
+					_oneToNByzantineRegularRegister.onWrite(new HashBlock(block));
+					blockId = _blockId;
 					blockTable.put((Integer) index, blockId);
 					_previousBlockTable.put((Integer) index, blockId);
 					index++;
 				}
 		
-				//sendIndexBlocks(blockTable);
-				broadcastSendIndexBlocks(blockTable, portList);
-			} catch (RemoteException |
-					 NotBoundException |
-					 NoSuchAlgorithmException |
-					 InvalidKeyException |
-					 SignatureException |
-					 BlockNotFoundException |
+				sendIndexBlocks(blockTable);
+			} catch (BlockNotFoundException |
 					 TamperedBlockException |
-					 InvalidKeySpecException |
 					 InvalidRemoteArgumentException |
 					 NullArgumentException exception)  {
 				throw new FileSystemException("[FS_write] " + exception.getMessage(), exception);
@@ -496,7 +453,6 @@ final class FileSystemClient {
 				
 				int size = contents.length;
 				_bytesRead = 0;
-				IFileSystemServer blockServer = getBlockServer(1101);
 				Map<Integer, BlockId> blockTable = getBlockTable(createBlockId(pk));
 				
 				byte[] currentBlock;
@@ -505,7 +461,8 @@ final class FileSystemClient {
 				    posContent = 0;
 				
 				if(blockTable.containsKey((Integer) firstKey)) {
-					currentBlock = blockServer.get(blockTable.remove(firstKey)).getBytes();
+					_oneToNByzantineRegularRegister.onRead(blockTable.remove(firstKey));
+					currentBlock = _blockId.getBytes();
 				} else {
 					currentBlock = new byte[Constant.BLOCK_LENGTH];
 				}
@@ -533,12 +490,8 @@ final class FileSystemClient {
 				}
 		
 				return _bytesRead;
-			} catch (RemoteException |
-					 NotBoundException |
-					 BlockNotFoundException |
+			} catch (BlockNotFoundException |
 					 NoSuchAlgorithmException |
-					 InvalidKeyException |
-					 SignatureException |
 					 TamperedBlockException |
 					 InvalidRemoteArgumentException |
 					 NullArgumentException exception) {
@@ -549,40 +502,49 @@ final class FileSystemClient {
 		private List<PublicKey> getPublicKeysFromFileSystemServer()
 				throws FileSystemException {
 			try {
-				IFileSystemServer blockServer = getBlockServer(1101);
-				List<EncodedPublicKey> encodedPublicKeys= blockServer.readPubKeys();
-		  		
+				_oneToNByzantineRegularRegister.onRead();
+				Set<EncodedPublicKey> encodedPublicKeys = _encodedPublicKeys;
 				
 				List<PublicKey> output= new ArrayList<>();
 		    	//Decode public key
 		    	byte[] EncodedPublicKey;
-		    	X509EncodedPublicKeySpec publicKeySpec;
+		    	X509EncodedKeySpec publicKeySpec;
 		    	KeyFactory keyFactory;
 		    	PublicKey publicKey;
-				for(EncodedPublicKey encodedPublicKey: encodedPublicKeys){
+				for(EncodedPublicKey encodedPublicKey : encodedPublicKeys){
 		        	//Decode public key
 		        	EncodedPublicKey = encodedPublicKey.getBytes();
-		        	publicKeySpec = new X509EncodedPublicKeySpec(EncodedPublicKey);
+		        	publicKeySpec = new X509EncodedKeySpec(EncodedPublicKey);
 		        	keyFactory = KeyFactory.getInstance("RSA");
 		        	publicKey = keyFactory.generatePublic(publicKeySpec);
 					
 					output.add(publicKey);
 				}
 				return output;
-			} catch (RemoteException |
-					 NoSuchAlgorithmException |
-					 InvalidKeySpecException |
-					 NotBoundException exception) {
+			} catch (NoSuchAlgorithmException |
+					 InvalidKeySpecException exception) {
 				throw new FileSystemException("[FS_list] " + exception.getMessage(), exception);
 			}
 		}
 		
-		private PublicKey getPublicKey(){
-			return _cc_Auth.getPublicKey();
+		public void onWriteReturn(AckFlag ackFlag) {
+			_blockId = ackFlag.getBlockId();
 		}
 		
-		private void exitCc_Auth() {
-			_cc_Auth.exit();
+		public void onReadReturn(FileBlock fileBlock) {
+			_fileBlock = fileBlock;
+		}
+		
+		public void onReadReturn(Set<EncodedPublicKey> encodedPublicKeys) {
+			_encodedPublicKeys = encodedPublicKeys;
+		}
+		
+		private void exit() {
+			_oneToNByzantineRegularRegister.onExit();
+		}
+		
+		public PublicKey getPublicKey() {
+			return _oneToNByzantineRegularRegister.getPublicKey();
 		}
 	}
 }

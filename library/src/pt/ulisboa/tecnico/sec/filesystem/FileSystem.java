@@ -2,7 +2,7 @@ package pt.ulisboa.tecnico.sec.filesystem;
 
 import java.util.List;
 
-import pt.ulisboa.tecnico.sec.filesystem.exception.FileSystemException;
+import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
 
 import java.security.PublicKey;
 
@@ -89,7 +89,7 @@ public final class FileSystem {
   		//Check parameters
   		checkFileSystemClientNonNullability();
   		
-  		_fileSystemClient.exitCc_Auth();
+  		_fileSystemClient.exit();
   	}
   	
   	//Testing methods

@@ -1,19 +1,18 @@
 package pt.tecnico.ulisboa.sec.filesystem.testing.app;
 
 import java.security.PublicKey;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Random;
 
 import pt.ulisboa.tecnico.sec.filesystem.FileSystem;
-import pt.ulisboa.tecnico.sec.filesystem.exception.FileSystemException;
+import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
 
 public class App {
 
 	public static void main(String[] args) {
-        byte[] aux = "potatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotato".getBytes(),
-        	   id,
-        	   aux2 = new byte[10];
+        //byte[] aux = "potatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotato".getBytes(),
+        //	   id,
+        //	   aux2 = new byte[10];
         int size=0;
 		int testsPassed=0;
 		int totalTestsMade=0;
@@ -30,7 +29,7 @@ public class App {
 			
 			try{
 				FileSystem.FS_write(-10, buffer.length, buffer);			
-				aux2 = FileSystem.FS_read(pk, -10, 5, size);
+				FileSystem.FS_read(pk, -10, 5, size);
 				System.out.println(">>>>>>>>>>>>>>Test1 - Failed!");
 			}catch(ArrayIndexOutOfBoundsException e){
 				System.out.println(">>>>>>>>>>>>>>Test1 - Passed!");
