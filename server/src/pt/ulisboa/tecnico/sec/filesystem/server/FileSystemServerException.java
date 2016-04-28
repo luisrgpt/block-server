@@ -1,6 +1,8 @@
 package pt.ulisboa.tecnico.sec.filesystem.server;
 
-public final class FileSystemServerException extends Exception {
+import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
+
+public final class FileSystemServerException extends FileSystemException {
 
 	/**
 	 * 

@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.sec.filesystem.common;
 
 import java.io.Serializable;
+import java.util.Arrays;
 
 public abstract class Container implements Serializable {
 	/**
@@ -16,5 +17,10 @@ public abstract class Container implements Serializable {
 	
 	public byte[] getBytes() {
 		return _bytes;
+	}
+	
+	@Override
+	public String toString() {
+		return Arrays.toString(_bytes);
 	}
 }

@@ -1,7 +1,5 @@
 package pt.ulisboa.tecnico.sec.filesystem.server;
 
-import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -29,17 +27,17 @@ import pt.ulisboa.tecnico.sec.filesystem.replication.AuthenticatedDataByzantineQ
 import pt.ulisboa.tecnico.sec.filesystem.replication.IReplicationServer;
 
 import java.io.File;
-import java.io.IOException;
 import java.lang.System;
 import java.net.URISyntaxException;
 
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
 
 
 final class FileSystemServer {
 	
 	FileSystemServer(char[] password, int port)
-			throws RemoteException, FileSystemServerException, NotBoundException {
+			throws FileSystemException {
 		new FileSystemServerImpl(password, port);
 	}
 	
@@ -57,15 +55,13 @@ final class FileSystemServer {
 		//private boolean serverUnderAttack = true,
 		//		          canAttack         = false;
 		
-		//Block server attribute
-		private Map<EncodedPublicKey, Map<BlockId, ImmutableTriple<Integer, FileBlock, EncodedSignature>>> _dataBase;
-		private Map<BlockId, BlockId> _keyBlockIdTable;
-		
-		//Key server attribute
-		private Map<ProcessId, ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>> _pkStore;
+		//Server attributes
+		private Map<EncodedPublicKey, Map<BlockId, ImmutableTriple<Integer, KeyBlock, EncodedSignature>>> _keyBlockDataBase;
+		private Map<BlockId, ImmutablePair<Integer, HashBlock>> _hashBlockDataBase;
+		private Map<ProcessId, ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>> _publicKeyDataBase;
 		
 		private FileSystemServerImpl(char[] password, int port)
-				throws RemoteException, FileSystemServerException, NotBoundException {
+				throws FileSystemException {
 			try {
 				//Checking parameters
 				checkArgumentsNonNullability(password, port);
@@ -89,15 +85,12 @@ final class FileSystemServer {
 		            System.setSecurityManager(new SecurityManager());
 		        }
 				
-				//Initialise block server attributes
-				_dataBase = new HashMap<>();
-				_keyBlockIdTable = new HashMap<>();
-				
-				//Initialise key server attribute 
-				_pkStore = new HashMap<>();
+				//Initialise server attributes
+				_keyBlockDataBase = new HashMap<>();
+				_hashBlockDataBase = new HashMap<>();
+				_publicKeyDataBase = new HashMap<>();
 			} catch (BlockTooSmallException |
 					 URISyntaxException |
-					 IOException |
 					 NullArgumentException exception) {
 				throw new FileSystemServerException("[" + port + "@main]: " + exception.getMessage(), exception);
 			}
@@ -138,12 +131,24 @@ final class FileSystemServer {
 	  		//Check parameters
 	  		checkArgumentsNonNullability(blockId);
   			
-	  		//Check if block exists
+	  		EncodedPublicKey encodedPublicKey = _publicKeyDataBase.get(processId).getMiddle();
+	  		
+	  		//Check if block exists on key block database
 	  		BlockId currentBlockId;
-	    	for (Entry<BlockId, ImmutableTriple<Integer, FileBlock, EncodedSignature>> entry : _dataBase.get(_pkStore.get(processId).getMiddle()).entrySet()) {
+	    	for (Entry<BlockId, ImmutableTriple<Integer, KeyBlock, EncodedSignature>> entry : _keyBlockDataBase.get(encodedPublicKey).entrySet()) {
 	    		currentBlockId = entry.getKey();
-	    		if(currentBlockId.hashCode() == blockId.hashCode()) {		
-    				return entry.getValue();
+	    		if(currentBlockId.hashCode() == blockId.hashCode()) {
+	    	  		ImmutableTriple<Integer, KeyBlock, EncodedSignature> triple = entry.getValue();
+    				return new ImmutableTriple<Integer, FileBlock, EncodedSignature>(triple.getLeft(), triple.getMiddle(), triple.getRight());
+	    		}
+	    	}
+	  		
+	  		//Check if block exists on hash block database
+	  		for (Entry<BlockId, ImmutablePair<Integer, HashBlock>> entry : _hashBlockDataBase.entrySet()) {
+	    		currentBlockId = entry.getKey();
+	    		if(currentBlockId.hashCode() == blockId.hashCode()) {
+	    			ImmutablePair<Integer, HashBlock> pair = entry.getValue();
+    				return new ImmutableTriple<Integer, FileBlock, EncodedSignature>(pair.getLeft(), pair.getRight(), null);
 	    		}
 	    	}
 	  		
@@ -159,20 +164,18 @@ final class FileSystemServer {
 		   		checkArgumentsNonNullability(processId, timeStamp, keyBlock, encodedSignature);
 	
 	        	//Put key block into database using public key's hash
-		   		EncodedPublicKey encodedPublicKey = _pkStore.get(processId).getMiddle(); 
-	        	Map<BlockId, ImmutableTriple<Integer, FileBlock, EncodedSignature>> processDatabase = _dataBase.remove(encodedPublicKey);
+		   		EncodedPublicKey encodedPublicKey = _publicKeyDataBase.get(processId).getMiddle(); 
+	        	Map<BlockId, ImmutableTriple<Integer, KeyBlock, EncodedSignature>> processDatabase = _keyBlockDataBase.remove(encodedPublicKey);
 	        	BlockId blockId = createBlockId(encodedPublicKey.getBytes());
 	        	boolean blockExists = false;
 	
 	      		//Replace block if block exists
-	        	for (Entry<BlockId, ImmutableTriple<Integer, FileBlock, EncodedSignature>> entry : processDatabase.entrySet()) {
+	        	for (Entry<BlockId, ImmutableTriple<Integer, KeyBlock, EncodedSignature>> entry : processDatabase.entrySet()) {
 	        		if(entry.getKey().hashCode() == blockId.hashCode()) {
 	        			processDatabase.remove(entry.getKey());
-	        			processDatabase.put(entry.getKey(), new ImmutableTriple<Integer, FileBlock, EncodedSignature>(timeStamp, keyBlock, encodedSignature));
-	        			_dataBase.put(encodedPublicKey, processDatabase);
-	        			
-	        			_keyBlockIdTable.remove(entry.getKey());
-	        			_keyBlockIdTable.put(entry.getKey(), createBlockId(keyBlock.getBytes()));
+	        			processDatabase.put(entry.getKey(), new ImmutableTriple<Integer, KeyBlock, EncodedSignature>(timeStamp, keyBlock, encodedSignature));
+	        			_keyBlockDataBase.put(encodedPublicKey, processDatabase);
+
 	        			blockExists = true;
 	        			break;
 	        		}
@@ -180,13 +183,9 @@ final class FileSystemServer {
 	
 	        	//Else put block into new slot
 	        	if(!blockExists) {
-	        		processDatabase.put(blockId, new ImmutableTriple<Integer, FileBlock, EncodedSignature>(timeStamp, keyBlock, encodedSignature));
-	        		_dataBase.put(encodedPublicKey, processDatabase);
-	        		
-	        		_keyBlockIdTable.put(blockId, createBlockId(keyBlock.getBytes()));
+	        		processDatabase.put(blockId, new ImmutableTriple<Integer, KeyBlock, EncodedSignature>(timeStamp, keyBlock, encodedSignature));
+	        		_keyBlockDataBase.put(encodedPublicKey, processDatabase);
 	        	}
-	
-	        	System.out.println(Arrays.toString(keyBlock.getBytes()));
 	
 	        	//Return block id
 				return blockId;
@@ -196,24 +195,21 @@ final class FileSystemServer {
 	    }
 	
 		@Override
-	  	public BlockId put_h(ProcessId processId, Integer timeStamp, HashBlock hashBlock, EncodedSignature encodedSignature)
+	  	public BlockId put_h(ProcessId processId, Integer timeStamp, HashBlock hashBlock)
 	    		throws FileSystemException {
 			try {
 		   		//Check parameters
 		    	checkArgumentsNonNullability(hashBlock);
 	        	
 	        	//Put hash block into database using hash block's hash
-		    	EncodedPublicKey encodedPublicKey = _pkStore.get(processId).getMiddle(); 
-	        	Map<BlockId, ImmutableTriple<Integer, FileBlock, EncodedSignature>> processDatabase = _dataBase.remove(encodedPublicKey);
 		    	BlockId blockId = createBlockId(hashBlock.getBytes());
 	        	boolean blockExists = false;
 	        	
 	      		//Replace block if block exists
-	        	for (Entry<BlockId, ImmutableTriple<Integer, FileBlock, EncodedSignature>> entry : processDatabase.entrySet()) {
+	        	for (Entry<BlockId, ImmutablePair<Integer, HashBlock>> entry : _hashBlockDataBase.entrySet()) {
 	        		if(entry.getKey().hashCode() == blockId.hashCode()) {
-	        			processDatabase.remove(entry.getKey());
-	        			processDatabase.put(entry.getKey(), new ImmutableTriple<Integer, FileBlock, EncodedSignature>(timeStamp, hashBlock, encodedSignature));
-	        			_dataBase.put(encodedPublicKey, processDatabase);
+	        			_hashBlockDataBase.remove(entry.getKey());
+	        			_hashBlockDataBase.put(entry.getKey(), new ImmutablePair<Integer, HashBlock>(timeStamp, hashBlock));
 	        			
 	        			blockExists = true;
 	        			break;
@@ -221,8 +217,7 @@ final class FileSystemServer {
 	        	}
 	        	//Else put block into new slot
 	        	if(!blockExists) {
-	        		processDatabase.put(blockId, new ImmutableTriple<Integer, FileBlock, EncodedSignature>(timeStamp, hashBlock, encodedSignature));
-	        		_dataBase.put(encodedPublicKey, processDatabase);
+	        		_hashBlockDataBase.put(blockId, new ImmutablePair<Integer, HashBlock>(timeStamp, hashBlock));
 	        	}
 	        	
 	        	//Return block id
@@ -239,13 +234,13 @@ final class FileSystemServer {
 				//Check parameters
 		    	checkArgumentsNonNullability(timeStamp, encodedPublicKey, encodedSignature);
 				
-				for(ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature> value : _pkStore.values()){
+				for(ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature> value : _publicKeyDataBase.values()){
 					if(Arrays.equals(encodedPublicKey.getBytes(), value.getMiddle().getBytes())){
-						_pkStore.remove(value);
+						_publicKeyDataBase.remove(value);
 					}
 				}
-				_pkStore.put(processId, new ImmutableTriple<>(timeStamp, encodedPublicKey, encodedSignature));
-				_dataBase.put(encodedPublicKey, new HashMap<>());
+				_publicKeyDataBase.put(processId, new ImmutableTriple<>(timeStamp, encodedPublicKey, encodedSignature));
+				_keyBlockDataBase.put(encodedPublicKey, new HashMap<>());
 				
 				//Return block id
 				return createBlockId(encodedPublicKey.getBytes());
@@ -259,7 +254,7 @@ final class FileSystemServer {
 				throws FileSystemException {
 			
 			//Get public keys from key store
-			return new HashSet<>(_pkStore.values());
+			return new HashSet<>(_publicKeyDataBase.values());
 		}
 	   	
 	   	//private void serverAttack(){

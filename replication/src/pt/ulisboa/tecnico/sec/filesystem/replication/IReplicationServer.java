@@ -18,5 +18,5 @@ public interface IReplicationServer {
 	Set<ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>> readPubKeys() throws FileSystemException;
 	ImmutableTriple<Integer, FileBlock, EncodedSignature> get(ProcessId processId, BlockId blockId) throws FileSystemException;
   	BlockId put_k(ProcessId processId, Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature) throws FileSystemException;
-  	BlockId put_h(ProcessId processId, Integer timeStamp, HashBlock hashBlock, EncodedSignature encodedSignature) throws FileSystemException;
+  	BlockId put_h(ProcessId processId, Integer timeStamp, HashBlock hashBlock) throws FileSystemException;
 }

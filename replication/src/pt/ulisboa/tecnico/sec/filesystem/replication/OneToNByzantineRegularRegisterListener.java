@@ -8,7 +8,7 @@ import pt.ulisboa.tecnico.sec.filesystem.common.FileBlock;
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
 
 public interface OneToNByzantineRegularRegisterListener {
-	void onWriteReturn(AckFlag ackFlag);
+	void onWriteReturn(AckFlag ackFlag) throws FileSystemException;
 	void onReadReturn(FileBlock fileBlock) throws FileSystemException;
 	void onReadReturn(Set<EncodedPublicKey> encodedPublicKeys) throws FileSystemException;
 }

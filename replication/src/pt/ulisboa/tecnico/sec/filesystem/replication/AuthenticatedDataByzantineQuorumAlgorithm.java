@@ -29,6 +29,7 @@ import pt.ulisboa.tecnico.sec.filesystem.common.ValueFlag;
 import pt.ulisboa.tecnico.sec.filesystem.common.WriteFlag;
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.TamperedBlockException;
+import pt.ulisboa.tecnico.sec.filesystem.logging.FileSystemLogger;
 
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.ImmutableTriple;
@@ -47,26 +48,33 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 	private Map<ProcessId, Integer> _storageTimeStamps;
 	private Map<ProcessId, AckFlag> _ackList;
 	private int _readId;
-	private Map<ProcessId, ImmutablePair<Integer, FileBlock>> _readFileBlockList;
+	private Map<ProcessId, ImmutablePair<Integer, KeyBlock>> _readKeyBlockList;
 	private Map<ProcessId, Set<ImmutablePair<Integer, EncodedPublicKey>>> _readPublicKeysList;
-	private ProcessId _processes[];
+	private ProcessId _processes[],
+			          _process;
 	private PublicKey _publicKey;
 	private int _numberOfCorrectProcesses, _numberOfFaultyProcesses;
 	
+	private BroadcastState _broadcastState;
+	private enum BroadcastState {
+		ON,
+		OFF
+	}
+	
 	public AuthenticatedDataByzantineQuorumAlgorithm(ProcessId processes[], ProcessId process, OneToNByzantineRegularRegisterListener oneToNByzantineRegularRegisterListener)
-			throws RemoteException, NotBoundException {
+			throws FileSystemException {
 		this(processes, process);
 		_oneToNByzantineRegularRegisterListener = oneToNByzantineRegularRegisterListener;
 	}
 	
 	public AuthenticatedDataByzantineQuorumAlgorithm(ProcessId processes[], ProcessId process, IReplicationServer iReplicationServer)
-			throws RemoteException, NotBoundException {
+			throws FileSystemException {
 		this(processes, process);
 		_iReplicationServer = iReplicationServer;
 	}
 	
 	private AuthenticatedDataByzantineQuorumAlgorithm(ProcessId processes[], ProcessId process)
-			throws RemoteException, NotBoundException {
+			throws FileSystemException {
 		_authPerfectPointToPointLinks = new AuthenticateAndFilterAlgorithm(processes, process, this);
 		
 		_iAuthenticator = new CitizenCardMockupAuthenticator();
@@ -76,50 +84,77 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		_writeTimeStamp = 0;
 		_ackList = new HashMap<>();
 		_readId = 0;
-		_readFileBlockList = new HashMap<>();
+		_readKeyBlockList = new HashMap<>();
 		_processes = processes;
+		_process = process;
 		
 		_numberOfCorrectProcesses = processes.length;
 		_numberOfFaultyProcesses = 0;
 		
 		_publicKey = _iAuthenticator.getPublicKey();
+		
+		_broadcastState = BroadcastState.OFF;
 	}
 	
 	public void onWrite(KeyBlock keyBlock)
 			throws FileSystemException {
-		EncodedSignature encodedSignature = onWrite(keyBlock.getBytes());
+		FileSystemLogger.logDescription(
+				"Writting Key block from replicated file system using Block ID:" +
+				System.getProperty("line.separator") +
+				keyBlock.toString());
+		
+		EncodedSignature encodedSignature = initWrite(keyBlock.getBytes());
 		for(ProcessId process : _processes) {
+			//if(_broadcastState == BroadcastState.OFF) {
+			//	return;
+			//}
 			_authPerfectPointToPointLinks.onSend(process, new WriteFlag(), _writeTimeStamp, keyBlock, encodedSignature);
 		}
 	}
 	
 	public void onWrite(HashBlock hashBlock)
 			throws FileSystemException {
-		EncodedSignature encodedSignature = onWrite(hashBlock.getBytes());
+		FileSystemLogger.logDescription(
+				"Writting Hash block from replicated file system using Block ID:" +
+				System.getProperty("line.separator") +
+				hashBlock.toString());
+		
+		initWrite();
 		for(ProcessId process : _processes) {
-			_authPerfectPointToPointLinks.onSend(process, new WriteFlag(), _writeTimeStamp, hashBlock, encodedSignature);
+			//if(_broadcastState == BroadcastState.OFF) {
+			//	return;
+			//}
+			_authPerfectPointToPointLinks.onSend(process, new WriteFlag(), _writeTimeStamp, hashBlock);
 		}
 	}
 	
-	public void onWrite()
+	public EncodedPublicKey onWrite()
 			throws FileSystemException {
-		byte[] encodedPublicKey = _publicKey.toString().getBytes();
-		EncodedSignature encodedSignature = onWrite(encodedPublicKey);
+		EncodedPublicKey encodedPublicKey = new EncodedPublicKey(_publicKey.toString().getBytes());
+		
+		FileSystemLogger.logDescription(
+				"Writting Public Key from replicated file system using Block ID:" +
+				System.getProperty("line.separator") +
+				encodedPublicKey.toString());
+		
+		EncodedSignature encodedSignature = initWrite(encodedPublicKey.getBytes());
 		for(ProcessId process : _processes) {
-			_authPerfectPointToPointLinks.onSend(process, new WriteFlag(), _writeTimeStamp, new EncodedPublicKey(encodedPublicKey), encodedSignature);
+			//if(_broadcastState == BroadcastState.OFF) {
+			//	return;
+			//}
+			_authPerfectPointToPointLinks.onSend(process, new WriteFlag(), _writeTimeStamp, encodedPublicKey, encodedSignature);
 		}
+		
+		return encodedPublicKey;
 	}
 	
-	private EncodedSignature onWrite(byte[] data) {
-		++_writeTimeStamp;
-		_ackList = new HashMap<>();
+	private EncodedSignature initWrite(byte[] data) {
+		initWrite();
 		
 		byte[] classData = AuthenticatedDataByzantineQuorumAlgorithm.class.getName().getBytes(),
 			   selfData = _publicKey.toString().getBytes(),
 			   flagData = WriteFlag.class.getName().getBytes(),
 			   timeStampData = _writeTimeStamp.toString().getBytes();
-		
-		System.out.println("[onWrite]   " + Arrays.toString(data));
 		
 		int classLength = classData.length,
 			selfLength = selfData.length,
@@ -138,32 +173,54 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		return new EncodedSignature(_iAuthenticator.signData(content));
 	}
 	
+	private void initWrite() {
+		_broadcastState = BroadcastState.ON;
+		++_writeTimeStamp;
+		_ackList = new HashMap<>();
+	}
+	
 	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature)
 			throws FileSystemException {
+		/*if(!processId.equals(_process)) {
+			return;
+		}*/
 		BlockId blockId = null;
 
 		Integer storageTimeStamp = _storageTimeStamps.remove(processId);
 		if(timeStamp > storageTimeStamp) {
 			_storageTimeStamps.put(processId, timeStamp);
 			blockId = _iReplicationServer.put_k(processId, timeStamp, keyBlock, encodedSignature);
+			
+			FileSystemLogger.logDescription(
+					"Writted Public Key into server with port " + _process.toString() + ":" +
+					System.getProperty("line.separator") +
+					keyBlock.toString());
 		}
-		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(blockId), timeStamp);
+		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(), timeStamp);
 	}
 	
-	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, HashBlock hashBlock, EncodedSignature encodedSignature)
+	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, HashBlock hashBlock)
 			throws FileSystemException {
+		/*if(!processId.equals(_process)) {
+			return;
+		}*/
 		BlockId blockId = null;
 
-		Integer storageTimeStamp = _storageTimeStamps.remove(processId);
-		if(timeStamp > storageTimeStamp) {
-			_storageTimeStamps.put(processId, timeStamp);
-			blockId = _iReplicationServer.put_h(processId, timeStamp, hashBlock, encodedSignature);
-		}
-		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(blockId), timeStamp);
+		blockId = _iReplicationServer.put_h(processId, timeStamp, hashBlock);
+		
+		FileSystemLogger.logDescription(
+				"Writted Hash Block into server with port " + _process.toString() + ":" +
+				System.getProperty("line.separator") +
+				hashBlock.toString());
+		
+		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(), timeStamp);
 	}
 	
 	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, EncodedPublicKey encodedPublicKey, EncodedSignature encodedSignature)
 			throws FileSystemException {
+		/*if(!processId.equals(_process)) {
+			return;
+		}*/
 		BlockId blockId = null;
 		_storageTimeStamps.put(processId, 0);
 		
@@ -171,56 +228,146 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		if(timeStamp > storageTimeStamp) {
 			_storageTimeStamps.put(processId, timeStamp);
 			blockId = _iReplicationServer.storePubKey(processId, timeStamp, encodedPublicKey, encodedSignature);
+			
+			FileSystemLogger.logDescription(
+					"Writted Public Key into server with port " + _process.toString() + ":" +
+					System.getProperty("line.separator") +
+					encodedPublicKey.toString());
 		}
-		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(blockId), timeStamp);
+		_authPerfectPointToPointLinks.onSend(processId, new AckFlag(), timeStamp);
 	}
 	
-	public void onDeliver(ProcessId processId, AckFlag ackFlag, Integer timeStamp) {
+	public void onDeliver(ProcessId processId, AckFlag ackFlag, Integer timeStamp)
+			throws FileSystemException {
+		if(!timeStamp.equals(_writeTimeStamp)) {
+			return;
+		}
+		
+		FileSystemLogger.logDescription(
+				"Acked request " + timeStamp.toString() + " into server with port " + processId.toString() + ".");
+
+		FileSystemLogger.log("Writted on process " + processId.toString());
 		_ackList.put(processId, ackFlag);
 		if(_ackList.size() > (_numberOfCorrectProcesses + _numberOfFaultyProcesses) / 2) {
 			_ackList = new HashMap<>();
 			_oneToNByzantineRegularRegisterListener.onWriteReturn(ackFlag);
+			_broadcastState = BroadcastState.OFF;
 		}
 	}
 	
 	public void onRead(BlockId blockId)
 			throws FileSystemException {
-		++_readId;
-		_readFileBlockList = new HashMap<>();
+		FileSystemLogger.logDescription(
+				"Reading File Block from replicated file system using Block ID:" +
+				System.getProperty("line.separator") +
+				blockId.toString());
+		
+		initRead();
 		for(ProcessId process : _processes) {
+			//if(_broadcastState == BroadcastState.OFF) {
+			//	return;
+			//}
 			_authPerfectPointToPointLinks.onSend(process, new ReadFlag(), _readId, blockId);
 		}
 	}
 	
 	public void onRead()
 			throws FileSystemException {
-		++_readId;
-		_readPublicKeysList = new HashMap<>();
+		FileSystemLogger.logDescription("Reading Public Keys from replicated file system.");
+		
+		initRead();
 		for(ProcessId process : _processes) {
+			//if(_broadcastState == BroadcastState.OFF) {
+			//	return;
+			//}
 			_authPerfectPointToPointLinks.onSend(process, new ReadFlag(), _readId);
 		}
+	}
+	
+	private void initRead() {
+		_broadcastState = BroadcastState.ON;
+		++_readId;
+		_readKeyBlockList = new HashMap<>();
 	}
 	
 	public void onDeliver(ProcessId processId, ReadFlag readFlag, Integer readId, BlockId blockId)
 			throws FileSystemException {
 		ImmutableTriple<Integer, FileBlock, EncodedSignature> tuple = _iReplicationServer.get(processId, blockId);
-		_authPerfectPointToPointLinks.onSend(processId, new ValueFlag(), readId, tuple.getLeft(), tuple.getMiddle(), tuple.getRight());
+		EncodedSignature encodedSignature = tuple.getRight();
+		if(encodedSignature == null) {
+			HashBlock hashBlock = (HashBlock) tuple.getMiddle();
+			
+			FileSystemLogger.logDescription(
+					"Sending Hash Block from server with port " + _process.toString() + ":" +
+					System.getProperty("line.separator") +
+					hashBlock.toString());
+			
+			_authPerfectPointToPointLinks.onSend(processId, new ValueFlag(), readId, hashBlock);
+		} else {
+			KeyBlock keyBlock = (KeyBlock) tuple.getMiddle();
+			
+			FileSystemLogger.logDescription(
+					"Sending Key Block from server with port " + _process.toString() + ":" +
+					System.getProperty("line.separator") +
+					keyBlock.toString());
+			
+			_authPerfectPointToPointLinks.onSend(processId, new ValueFlag(), readId, tuple.getLeft(), keyBlock, encodedSignature);
+		}
 	}
 	
 	public void onDeliver(ProcessId processId, ReadFlag readFlag, Integer readId)
 			throws FileSystemException {
 		Set<ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>> encodedPublicKeys = _iReplicationServer.readPubKeys();
+		
+		FileSystemLogger.logDescription(
+				"Sending Public Keys from server with port " + _process.toString() + ".");
+		
 		_authPerfectPointToPointLinks.onSend(processId, new ValueFlag(), readId, encodedPublicKeys);
 	}
 	
-	public void onDeliver(ProcessId processId, ValueFlag valueFlag, Integer readId, Integer timeStamp, FileBlock fileBlock, EncodedSignature encodedSignature)
+	public void onDeliver(ProcessId processId, ValueFlag valueFlag, Integer readId, Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature)
+			throws FileSystemException {
+		if(readId != _readId) {
+			return;
+		}
+		verifySign(timeStamp, keyBlock, encodedSignature);
+    	
+    	_readKeyBlockList.put(processId, new ImmutablePair<>(timeStamp, keyBlock));
+    	if(_readKeyBlockList.size() > (_numberOfCorrectProcesses + _numberOfFaultyProcesses) / 2) {
+    		FileBlock finalFileBlock = highestValue(new HashSet<>(_readKeyBlockList.values()));
+    		_readKeyBlockList = new HashMap<>();
+    		_oneToNByzantineRegularRegisterListener.onReadReturn(finalFileBlock);
+    		_broadcastState = BroadcastState.OFF;
+    		
+    		FileSystemLogger.logDescription(
+    				"Readed Key Block from replicated file system:" +
+    				System.getProperty("line.separator") +
+    				keyBlock.toString());
+		}
+	}
+	
+	public void onDeliver(ProcessId processId, ValueFlag valueFlag, Integer readId, HashBlock hashBlock)
+			throws FileSystemException {
+		if(!readId.equals(_readId)) {
+			return;
+		}
+		_oneToNByzantineRegularRegisterListener.onReadReturn(hashBlock);
+		_broadcastState = BroadcastState.OFF;
+		
+		FileSystemLogger.logDescription(
+				"Readed Hash Block from replicated file system:" +
+				System.getProperty("line.separator") +
+				hashBlock.toString());
+	}
+
+	private void verifySign(Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature)
 			throws FileSystemException {
 		try {
 			byte[] classData = AuthenticatedDataByzantineQuorumAlgorithm.class.getName().getBytes(),
 				   selfData = _publicKey.toString().getBytes(),
 				   flagData = WriteFlag.class.getName().getBytes(),
 				   timeStampData = timeStamp.toString().getBytes(),
-				   fileBlockData = fileBlock.getBytes();
+				   fileBlockData = keyBlock.getBytes();
 			
 			int classLength = classData.length,
 				selfLength = selfData.length,
@@ -229,26 +376,19 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 				dataLength = fileBlockData.length;
 				
 			byte[] content = new byte[classLength + selfLength + flagLength + timeStampLength + dataLength];
-	    	System.arraycopy(classData, 0, content, 0, classLength);
-	    	System.arraycopy(selfData, 0, content, classLength, selfLength);    	
-	    	System.arraycopy(flagData, 0, content, classLength + selfLength, flagLength);
-	    	System.arraycopy(timeStampData, 0, content, classLength + selfLength + flagLength, timeStampLength);
-	    	System.arraycopy(fileBlockData, 0, content, classLength + selfLength + flagLength + timeStampLength, dataLength);
-		    	
+			System.arraycopy(classData, 0, content, 0, classLength);
+			System.arraycopy(selfData, 0, content, classLength, selfLength);    	
+			System.arraycopy(flagData, 0, content, classLength + selfLength, flagLength);
+			System.arraycopy(timeStampData, 0, content, classLength + selfLength + flagLength, timeStampLength);
+			System.arraycopy(fileBlockData, 0, content, classLength + selfLength + flagLength + timeStampLength, dataLength);
+				
 			//Verify signature
-	    	Signature signature = Signature.getInstance("SHA1withRSA");
-	    	signature.initVerify(_publicKey);
-	    	signature.update(content);
-	    	if(!signature.verify(encodedSignature.getBytes())) {
-	    		System.out.println("Verification failed!");
-	    		throw new TamperedBlockException();
-	    	}
-	    	
-	    	_readFileBlockList.put(processId, new ImmutablePair<>(timeStamp ,fileBlock));
-	    	if(_readFileBlockList.size() > (_numberOfCorrectProcesses + _numberOfFaultyProcesses) / 2) {
-	    		FileBlock finalFileBlock = highestValue(new HashSet<>(_readFileBlockList.values()));
-	    		_readFileBlockList = new HashMap<>();
-	    		_oneToNByzantineRegularRegisterListener.onReadReturn(finalFileBlock);
+			Signature signature = Signature.getInstance("SHA1withRSA");
+			signature.initVerify(_publicKey);
+			signature.update(content);
+			if(!signature.verify(encodedSignature.getBytes())) {
+				FileSystemLogger.log("Verification failed!");
+				throw new TamperedBlockException();
 			}
 		} catch (NoSuchAlgorithmException |
 				 InvalidKeyException |
@@ -259,6 +399,9 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 
 	public void onDeliver(ProcessId processId, ValueFlag valueFlag, Integer readId, Set<ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>> encodedPublicKeys)
 			throws FileSystemException {
+		if(!readId.equals(_readId)) {
+			return;
+		}
 		try {
 			Set<ImmutablePair<Integer, EncodedPublicKey>> publicKeyList = new HashSet<>();
 			
@@ -308,7 +451,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		    	signature.initVerify(_publicKey);
 		    	signature.update(content);
 		    	if(!signature.verify(entry.getRight().getBytes())) {
-		    		System.out.println("Verification failed!");
+		    		FileSystemLogger.log("Verification failed!");
 		    		throw new TamperedBlockException();
 		    	}
 		    	
@@ -316,13 +459,19 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 			}
 	
 	    	_readPublicKeysList.put(processId, publicKeyList);
-	    	if(_readFileBlockList.size() > (_numberOfCorrectProcesses + _numberOfFaultyProcesses) / 2) {
+	    	if(_readKeyBlockList.size() > (_numberOfCorrectProcesses + _numberOfFaultyProcesses) / 2) {
 	    		Set<EncodedPublicKey> publicKeys = new HashSet<>();
 	    		for(Set<ImmutablePair<Integer, EncodedPublicKey>> set : new HashSet<>(_readPublicKeysList.values())) {
 	    			publicKeys.add(highestValue(set));
 	    		}
-	    		_readFileBlockList = new HashMap<>();
+	    		_readKeyBlockList = new HashMap<>();
 	    		_oneToNByzantineRegularRegisterListener.onReadReturn(publicKeys);
+	    		_broadcastState = BroadcastState.OFF;
+	    		
+				FileSystemLogger.logDescription(
+						"Readed Public Key from replicated file system:" +
+						System.getProperty("line.separator") +
+						publicKeys.toString());
 			}
 		} catch (NoSuchAlgorithmException |
 				 InvalidKeyException |
@@ -332,22 +481,13 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 	}
 	
 	public <Generic> Generic highestValue(Set<ImmutablePair<Integer, Generic>> set) {
-		Map<Generic, Integer> map = new HashMap<>();
-
-		Generic generic;
-	    for (ImmutablePair<Integer, Generic> immutablePair : set) {
-	    	generic = immutablePair.getRight();
-	        map.put(generic, map.containsKey(generic) ? map.remove(generic) + 1 : 1);
-	    }
-
-	    Entry<Generic, Integer> max = null;
-	    for (Entry<Generic, Integer> entry : map.entrySet()) {
-	        if (max == null || entry.getValue() > max.getValue()) {
-	            max = entry;
+		ImmutablePair<Integer, Generic> max = new ImmutablePair<>(0, null);
+		for (ImmutablePair<Integer, Generic> immutablePair : set) {
+			if (immutablePair.getLeft() > max.getLeft()) {
+	            max = immutablePair;
 	        }
 	    }
-
-	    return max.getKey();
+	    return max.getRight();
 	}
 
 	@Override

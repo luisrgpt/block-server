@@ -6,5 +6,6 @@
 	<classpathentry kind="lib" path="/home/lribeirogomes/git/sec/lib/commons-lang3-3.4.jar"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/cc-authentication"/>
 	<classpathentry combineaccessrules="false" kind="src" path="/exceptions"/>
+	<classpathentry combineaccessrules="false" kind="src" path="/logging"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
