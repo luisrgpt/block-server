@@ -34,7 +34,7 @@ final class AuthenticateAndFilterAlgorithm
 	private Set<ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<WriteFlag, Integer>, HashBlock>>> _deliveredWriteHashBlock;
 	private Set<ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<WriteFlag, Integer>, ImmutablePair<EncodedPublicKey, EncodedSignature>>>> _deliveredWritePublicKey;
 	private Set<ImmutablePair<ProcessId, ImmutablePair<AckFlag, Integer>>> _deliveredAck;
-	private Set<ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<ReadFlag, Integer>, BlockId>>> _deliveredReadBlock;
+	private Set<ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<ReadFlag, Integer>, BlockId>>> _deliveredReadFileBlock;
 	private Set<ImmutablePair<ProcessId, ImmutablePair<ReadFlag, Integer>>> _deliveredReadPublicKeys;
 	private Set<ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<ValueFlag, Integer>, ImmutableTriple<Integer, KeyBlock, EncodedSignature>>>> _deliveredValueKeyBlock;
 	private Set<ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<ValueFlag, Integer>, HashBlock>>> _deliveredValueHashBlock;
@@ -51,7 +51,7 @@ final class AuthenticateAndFilterAlgorithm
 		_deliveredWriteHashBlock = new HashSet<>();
 		_deliveredWritePublicKey = new HashSet<>();
 		_deliveredAck = new HashSet<>();
-		_deliveredReadBlock = new HashSet<>();
+		_deliveredReadFileBlock = new HashSet<>();
 		_deliveredReadPublicKeys = new HashSet<>();
 		_deliveredValueKeyBlock = new HashSet<>();
 		_deliveredValueHashBlock = new HashSet<>();
@@ -60,7 +60,7 @@ final class AuthenticateAndFilterAlgorithm
 		_secretKey = "For simplification sake";
 	}
 	
-	public EncodedMac generateHMac(byte[] ... data)
+	public EncodedMac authenticate(byte[] ... data)
 			throws FileSystemException {	
 	    try {
 	        Mac mac = Mac.getInstance("HmacSHA256");
@@ -73,111 +73,152 @@ final class AuthenticateAndFilterAlgorithm
 	    }
 	}
 	
+	public boolean verifyAuthentication(EncodedMac encodedMac, byte[] ... data)
+			throws FileSystemException {	
+	    return authenticate(data).getBytes().equals(encodedMac.getBytes());
+	}
+	
 	public void onSend(ProcessId processId, WriteFlag writeFlag, Integer writeTimeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature)
 			throws FileSystemException {
-		EncodedMac encodedMac = generateHMac(processId.toString().getBytes(), writeFlag.toString().getBytes(), writeTimeStamp.toString().getBytes(), keyBlock.getBytes(), encodedSignature.getBytes());
+		EncodedMac encodedMac = authenticate(processId.toString().getBytes(), writeFlag.toString().getBytes(), writeTimeStamp.toString().getBytes(), keyBlock.getBytes(), encodedSignature.getBytes());
 		_stubbornPointToPointLinks.onSend(processId, writeFlag, writeTimeStamp, keyBlock, encodedSignature, encodedMac);
 	}
 	
 	public void onSend(ProcessId processId, WriteFlag writeFlag, Integer writeTimeStamp, HashBlock hashBlock)
 			throws FileSystemException {
-		EncodedMac encodedMac = generateHMac(processId.toString().getBytes(), writeFlag.toString().getBytes(), writeTimeStamp.toString().getBytes(), hashBlock.getBytes());
+		EncodedMac encodedMac = authenticate(processId.toString().getBytes(), writeFlag.toString().getBytes(), writeTimeStamp.toString().getBytes(), hashBlock.getBytes());
 		_stubbornPointToPointLinks.onSend(processId, writeFlag, writeTimeStamp, hashBlock, encodedMac);
 	}
 	
 	public void onSend(ProcessId processId, WriteFlag writeFlag, Integer writeTimeStamp, EncodedPublicKey encodedPublicKey, EncodedSignature encodedSignature)
 			throws FileSystemException {
-		EncodedMac encodedMac = generateHMac(processId.toString().getBytes(), writeFlag.toString().getBytes(), writeTimeStamp.toString().getBytes(), encodedPublicKey.getBytes(), encodedSignature.getBytes());
+		EncodedMac encodedMac = authenticate(processId.toString().getBytes(), writeFlag.toString().getBytes(), writeTimeStamp.toString().getBytes(), encodedPublicKey.getBytes(), encodedSignature.getBytes());
 		_stubbornPointToPointLinks.onSend(processId, writeFlag, writeTimeStamp, encodedPublicKey, encodedSignature, encodedMac);
 	}
 
 	public void onSend(ProcessId processId, AckFlag ackFlag, Integer timeStamp)
 			throws FileSystemException {
-		EncodedMac encodedMac = generateHMac(processId.toString().getBytes(), ackFlag.toString().getBytes(), timeStamp.toString().getBytes());
+		EncodedMac encodedMac = authenticate(processId.toString().getBytes(), ackFlag.toString().getBytes(), timeStamp.toString().getBytes());
 		_stubbornPointToPointLinks.onSend(processId, ackFlag, timeStamp, encodedMac);
 	}
 
 	public void onSend(ProcessId processId, ReadFlag readFlag, Integer readId, BlockId blockId)
 			throws FileSystemException {
-		EncodedMac encodedMac = generateHMac(processId.toString().getBytes(), readFlag.toString().getBytes(), readId.toString().getBytes(), blockId.getBytes());
+		EncodedMac encodedMac = authenticate(processId.toString().getBytes(), readFlag.toString().getBytes(), readId.toString().getBytes(), blockId.getBytes());
 		_stubbornPointToPointLinks.onSend(processId, readFlag, readId, blockId, encodedMac);
 	}
 	
 	public void onSend(ProcessId processId, ReadFlag readFlag, Integer readId)
 			throws FileSystemException {
-		EncodedMac encodedMac = generateHMac(processId.toString().getBytes(), readFlag.toString().getBytes(), readId.toString().getBytes());
+		EncodedMac encodedMac = authenticate(processId.toString().getBytes(), readFlag.toString().getBytes(), readId.toString().getBytes());
 		_stubbornPointToPointLinks.onSend(processId, readFlag, readId, encodedMac);
 	}
 
 	public void onSend(ProcessId processId, ValueFlag valueFlag, Integer readId, Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature)
 			throws FileSystemException {
-		EncodedMac encodedMac = generateHMac(processId.toString().getBytes(), valueFlag.toString().getBytes(), readId.toString().getBytes(), timeStamp.toString().getBytes(), keyBlock.getBytes(), encodedSignature.getBytes());
+		EncodedMac encodedMac = authenticate(processId.toString().getBytes(), valueFlag.toString().getBytes(), readId.toString().getBytes(), timeStamp.toString().getBytes(), keyBlock.getBytes(), encodedSignature.getBytes());
 		_stubbornPointToPointLinks.onSend(processId, valueFlag, readId, timeStamp, keyBlock, encodedSignature, encodedMac);
 	}
 
 	public void onSend(ProcessId processId, ValueFlag valueFlag, Integer readId, HashBlock hashBlock)
 			throws FileSystemException {
-		EncodedMac encodedMac = generateHMac(processId.toString().getBytes(), valueFlag.toString().getBytes(), readId.toString().getBytes(), hashBlock.getBytes());
+		EncodedMac encodedMac = authenticate(processId.toString().getBytes(), valueFlag.toString().getBytes(), readId.toString().getBytes(), hashBlock.getBytes());
 		_stubbornPointToPointLinks.onSend(processId, valueFlag, readId, hashBlock, encodedMac);
 	}
 	
 	public void onSend(ProcessId processId, ValueFlag valueFlag, Integer readId, Set<ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>> encodedPublicKeys)
 			throws FileSystemException {
-		EncodedMac encodedMac = generateHMac(processId.toString().getBytes(), valueFlag.toString().getBytes(), readId.toString().getBytes(), null); //TODO: Find a way to join all values
+		EncodedMac encodedMac = authenticate(processId.toString().getBytes(), valueFlag.toString().getBytes(), readId.toString().getBytes(), null); //TODO: Find a way to join all values
 		_stubbornPointToPointLinks.onSend(processId, valueFlag, readId, encodedPublicKeys, encodedMac);
 	}
 	
 	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature, EncodedMac encodedMac)
 			throws FileSystemException {
-		//TODO: Implement me!
-		_authPerfectPointToPointLinksListener.onDeliver(processId, writeFlag, timeStamp, keyBlock, encodedSignature);
+		ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<WriteFlag, Integer>, ImmutablePair<KeyBlock, EncodedSignature>>> message = new ImmutablePair<>(processId, new ImmutablePair<>(new ImmutablePair<>(writeFlag, timeStamp), new ImmutablePair<>(keyBlock, encodedSignature)));
+		if(verifyAuthentication(encodedMac, processId.toString().getBytes(), writeFlag.toString().getBytes(), timeStamp.toString().getBytes(), keyBlock.getBytes(), encodedSignature.getBytes()) &&
+		   !_deliveredWriteKeyBlock.contains(message)) {
+			_deliveredWriteKeyBlock.add(message);
+			_authPerfectPointToPointLinksListener.onDeliver(processId, writeFlag, timeStamp, keyBlock, encodedSignature);			
+		}
 	}
 	
 	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, HashBlock hashBlock, EncodedMac encodedMac)
 			throws FileSystemException {
-		//TODO: Implement me!
+		ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<WriteFlag, Integer>, HashBlock>> message = new ImmutablePair<>(processId, new ImmutablePair<>(new ImmutablePair<>(writeFlag, timeStamp), hashBlock));
+		if(verifyAuthentication(encodedMac, processId.toString().getBytes(), writeFlag.toString().getBytes(), timeStamp.toString().getBytes(), hashBlock.getBytes()) &&
+		   !_deliveredWriteHashBlock.contains(message)) {
+			_deliveredWriteHashBlock.add(message);
 		_authPerfectPointToPointLinksListener.onDeliver(processId, writeFlag, timeStamp, hashBlock);
+	}
 	}
 	
 	public void onDeliver(ProcessId processId, WriteFlag writeFlag, Integer timeStamp, EncodedPublicKey encodedPublicKey, EncodedSignature encodedSignature, EncodedMac encodedMac)
 			throws FileSystemException {
-		//TODO: Implement me!
+		ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<WriteFlag, Integer>, ImmutablePair<EncodedPublicKey, EncodedSignature>>> message = new ImmutablePair<>(processId, new ImmutablePair<>(new ImmutablePair<>(writeFlag, timeStamp), new ImmutablePair<>(encodedPublicKey, encodedSignature)));
+		if(verifyAuthentication(encodedMac, processId.toString().getBytes(), writeFlag.toString().getBytes(), timeStamp.toString().getBytes(), encodedPublicKey.getBytes(), encodedSignature.getBytes()) &&
+		   !_deliveredWritePublicKey.contains(message)) {
+			_deliveredWritePublicKey.add(message);
 		_authPerfectPointToPointLinksListener.onDeliver(processId, writeFlag, timeStamp, encodedPublicKey, encodedSignature);
+	}
 	}
 
 	public void onDeliver(ProcessId processId, AckFlag ackFlag, Integer timeStamp, EncodedMac encodedMac)
 			throws FileSystemException {
-		//TODO: Implement me!
+		ImmutablePair<ProcessId, ImmutablePair<AckFlag, Integer>> message = new ImmutablePair<>(processId, new ImmutablePair<>(ackFlag, timeStamp));
+		if(verifyAuthentication(encodedMac, processId.toString().getBytes(), ackFlag.toString().getBytes(), timeStamp.toString().getBytes()) &&
+		   !_deliveredAck.contains(message)) {
+			_deliveredAck.add(message);
 		_authPerfectPointToPointLinksListener.onDeliver(processId, ackFlag, timeStamp);
+	}
 	}
 
 	public void onDeliver(ProcessId processId, ReadFlag readFlag, Integer readId, BlockId blockId, EncodedMac encodedMac)
 			throws FileSystemException {
-		//TODO: Implement me!
+		ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<ReadFlag, Integer>, BlockId>> message = new ImmutablePair<>(processId, new ImmutablePair<>(new ImmutablePair<>(readFlag, readId), blockId));
+		if(verifyAuthentication(encodedMac, processId.toString().getBytes(), readFlag.toString().getBytes(), readId.toString().getBytes(), blockId.getBytes()) &&
+		   !_deliveredReadFileBlock.contains(message)) {
+			_deliveredReadFileBlock.add(message);
 		_authPerfectPointToPointLinksListener.onDeliver(processId, readFlag, readId, blockId);
+	}
 	}
 
 	public void onDeliver(ProcessId processId, ReadFlag readFlag, Integer readId, EncodedMac encodedMac)
 			throws FileSystemException {
-		//TODO: Implement me!
+		ImmutablePair<ProcessId, ImmutablePair<ReadFlag, Integer>> message = new ImmutablePair<>(processId, new ImmutablePair<>(readFlag, readId));
+		if(verifyAuthentication(encodedMac, processId.toString().getBytes(), readFlag.toString().getBytes(), readId.toString().getBytes()) &&
+		   !_deliveredReadPublicKeys.contains(message)) {
+			_deliveredReadPublicKeys.add(message);
 		_authPerfectPointToPointLinksListener.onDeliver(processId, readFlag, readId);
+	}
 	}
 	
 	public void onDeliver(ProcessId processId, ValueFlag valueFlag, Integer readId, Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature, EncodedMac encodedMac)
 			throws FileSystemException {
-		//TODO: Implement me!
+		ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<ValueFlag, Integer>, ImmutableTriple<Integer, KeyBlock, EncodedSignature>>> message = new ImmutablePair<>(processId, new ImmutablePair<>(new ImmutablePair<>(valueFlag, readId), new ImmutableTriple<>(timeStamp, keyBlock, encodedSignature)));
+		if(verifyAuthentication(encodedMac, processId.toString().getBytes(), valueFlag.toString().getBytes(), readId.toString().getBytes(), timeStamp.toString().getBytes(), keyBlock.getBytes(), encodedSignature.getBytes()) &&
+		   !_deliveredValueKeyBlock.contains(message)) {
+			_deliveredValueKeyBlock.add(message);
 		_authPerfectPointToPointLinksListener.onDeliver(processId, valueFlag, readId, timeStamp, keyBlock, encodedSignature);
+	}
 	}
 
 	public void onDeliver(ProcessId processId, ValueFlag valueFlag, Integer readId, HashBlock hashBlock, EncodedMac encodedMac)
 			throws FileSystemException {
-		//TODO: Implement me!
+		ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<ValueFlag, Integer>, HashBlock>> message = new ImmutablePair<>(processId, new ImmutablePair<>(new ImmutablePair<>(valueFlag, readId), hashBlock));
+		if(verifyAuthentication(encodedMac, processId.toString().getBytes(), valueFlag.toString().getBytes(), readId.toString().getBytes(), hashBlock.getBytes()) &&
+		   !_deliveredValueHashBlock.contains(message)) {
+			_deliveredValueHashBlock.add(message);
 		_authPerfectPointToPointLinksListener.onDeliver(processId, valueFlag, readId, hashBlock);
+	}
 	}
 	
 	public void onDeliver(ProcessId processId, ValueFlag valueFlag, Integer readId, Set<ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>> encodedPublicKeys, EncodedMac encodedMac)
 			throws FileSystemException {
-		//TODO: Implement me!
+		ImmutablePair<ProcessId, ImmutablePair<ImmutablePair<ValueFlag, Integer>, Set<ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>>>> message = new ImmutablePair<>(processId, new ImmutablePair<>(new ImmutablePair<>(valueFlag, readId), encodedPublicKeys));
+		if(verifyAuthentication(encodedMac, processId.toString().getBytes(), valueFlag.toString().getBytes(), readId.toString().getBytes(), null) &&  //TODO: Find a way to join all values
+		   !_deliveredValuePublicKeys.contains(message)) {
+			_deliveredValuePublicKeys.add(message);
 		_authPerfectPointToPointLinksListener.onDeliver(processId, valueFlag, readId, encodedPublicKeys);
+	}
 	}
 }
