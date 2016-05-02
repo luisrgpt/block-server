@@ -7,4 +7,9 @@ public final class AckFlag implements Serializable {
 	 * 
 	 */
 	private static final long serialVersionUID = 2018137700137900094L;
+
+	@Override
+	public String toString() {
+		return "ACK";
+	}
 }

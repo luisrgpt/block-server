@@ -36,6 +36,7 @@ public class App {
 				testsPassed++;
 			}
 			totalTestsMade++;
+			
 			//TEST2
 			System.out.println("Test2: Writting in valid position: pos==20");
 			

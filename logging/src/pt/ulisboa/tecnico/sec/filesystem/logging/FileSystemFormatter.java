@@ -1,5 +1,7 @@
 package pt.ulisboa.tecnico.sec.filesystem.logging;
 
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.logging.Formatter;
 import java.util.logging.Handler;
 import java.util.logging.LogRecord;
@@ -9,7 +11,7 @@ class FileSystemFormatter extends Formatter {
 
 	@Override
 	public synchronized String format(LogRecord rec) {
-		return rec.getMessage() + System.getProperty("line.separator");
+		return "[" + calcDate(rec) + "]" + rec.getMessage() + System.getProperty("line.separator");
 	}
 
 	@Override
@@ -17,15 +19,13 @@ class FileSystemFormatter extends Formatter {
 		return rec.getMessage() + System.getProperty("line.separator");
 	}
 
-	/*private String calcDate(long millisecs) {
-
+	private String calcDate(LogRecord rec) {
 	    SimpleDateFormat date_format = new SimpleDateFormat("MMM dd,yyyy HH:mm");
-
-	    Date resultdate = new Date(millisecs);
+	    Date resultdate = new Date(rec.getMillis());
 
 	    return date_format.format(resultdate);
 
-	  }*/
+	}
 
 	@Override
 	public String getHead(Handler h) {

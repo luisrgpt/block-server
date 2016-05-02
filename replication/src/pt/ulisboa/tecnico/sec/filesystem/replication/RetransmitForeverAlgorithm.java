@@ -1,6 +1,7 @@
 package pt.ulisboa.tecnico.sec.filesystem.replication;
 
 import java.rmi.RemoteException;
+import java.util.Arrays;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -104,6 +105,7 @@ FairLossPointToPointLinksListener {
 		}
 		for(ImmutablePair<ProcessId, ImmutablePair<ImmutableTriple<WriteFlag, Integer, EncodedMac>, ImmutablePair<EncodedPublicKey, EncodedSignature>>> message : _sentWritePublicKey) {
 			try {
+				FileSystemLogger.log("   " + Arrays.toString(message.getRight().getLeft().getRight().getBytes()));
 				_fairLossPointToPointLinks.onSend(message.getLeft(), message.getRight().getLeft().getLeft(), message.getRight().getLeft().getMiddle(), message.getRight().getRight().getLeft(), message.getRight().getRight().getRight(), message.getRight().getLeft().getRight());
 			} catch (RemoteException | FileSystemException exception) {
 				try {
