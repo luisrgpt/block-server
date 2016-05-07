@@ -1,36 +1,13 @@
 package pt.ulisboa.tecnico.sec.filesystem.authentication;
 
-import pteidlib.PTEID_ADDR;
-import pteidlib.PTEID_Certif;
-import pteidlib.PTEID_ID;
-import pteidlib.PTEID_PIC;
-import pteidlib.PTEID_Pin;
-import pteidlib.PTEID_TokenInfo;
-import pteidlib.PteidException;
-import pteidlib.pteid;
-
-import java.io.FileOutputStream;
-import java.nio.charset.Charset;
-import java.lang.reflect.Method;
-
-import javax.crypto.*;
-
-import java.io.IOException;
-
-import sun.security.pkcs11.wrapper.CK_ATTRIBUTE;
-import sun.security.pkcs11.wrapper.CK_C_INITIALIZE_ARGS;
-import sun.security.pkcs11.wrapper.CK_MECHANISM;
-import sun.security.pkcs11.wrapper.CK_SESSION_INFO;
-import sun.security.pkcs11.wrapper.PKCS11;
-import sun.security.pkcs11.wrapper.PKCS11Constants;
-import sun.security.pkcs11.wrapper.PKCS11Exception;
-
 import java.io.ByteArrayInputStream;
 import java.io.File;
 import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.io.InputStream;
+import java.lang.reflect.Method;
 import java.security.InvalidKeyException;
-import java.security.Key;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Signature;
@@ -52,6 +29,22 @@ import java.security.cert.X509Certificate;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Set;
+
+import pteidlib.PTEID_ADDR;
+import pteidlib.PTEID_Certif;
+import pteidlib.PTEID_ID;
+import pteidlib.PTEID_PIC;
+import pteidlib.PTEID_Pin;
+import pteidlib.PTEID_TokenInfo;
+import pteidlib.PteidException;
+import pteidlib.pteid;
+import sun.security.pkcs11.wrapper.CK_ATTRIBUTE;
+import sun.security.pkcs11.wrapper.CK_C_INITIALIZE_ARGS;
+import sun.security.pkcs11.wrapper.CK_MECHANISM;
+import sun.security.pkcs11.wrapper.CK_SESSION_INFO;
+import sun.security.pkcs11.wrapper.PKCS11;
+import sun.security.pkcs11.wrapper.PKCS11Constants;
+import sun.security.pkcs11.wrapper.PKCS11Exception;
 
 public class CitizenCardAuthenticator implements IAuthenticator {
 

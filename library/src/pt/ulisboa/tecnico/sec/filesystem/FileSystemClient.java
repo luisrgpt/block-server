@@ -1,8 +1,6 @@
 package pt.ulisboa.tecnico.sec.filesystem;
 
 import java.nio.ByteBuffer;
-import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
 import java.security.KeyFactory;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -411,9 +409,7 @@ final class FileSystemClient {
 				if(lastKey > firstKey + 1 || (pos + size) >= Constant.BLOCK_LENGTH) {
 					for (int index = firstKey + 1; index <= lastKey; index++) {
 						if(blockTable.containsKey((Integer) index)) {
-							//currentBlock = getAndVerifyHashBlock(blockTable.remove(index),_previousBlockTable.remove(index)).getBytes();
-							_oneToNByzantineRegularRegister.onRead(blockTable.remove(index));
-							currentBlock = _fileBlock.getBytes();
+							currentBlock = getAndVerifyHashBlock(blockTable.remove(index), _previousBlockTable.remove(index)).getBytes();
 						} else {
 							currentBlock = new byte[Constant.BLOCK_LENGTH];
 						}
@@ -478,9 +474,7 @@ final class FileSystemClient {
 				if(lastKey > firstKey + 1 || (pos + size) >= Constant.BLOCK_LENGTH) {
 					for (int index = firstKey + 1; index <= lastKey; index++) {
 						if(blockTable.containsKey((Integer) index)) {
-							//currentBlock = getAndVerifyHashBlock(blockTable.remove(index),_previousBlockTable.get(index)).getBytes();
-							_oneToNByzantineRegularRegister.onRead(blockTable.remove(index));
-							currentBlock = _fileBlock.getBytes();
+							currentBlock = getAndVerifyHashBlock(blockTable.remove(index),_previousBlockTable.get(index)).getBytes();
 						} else {
 							currentBlock = new byte[Constant.BLOCK_LENGTH];
 						}

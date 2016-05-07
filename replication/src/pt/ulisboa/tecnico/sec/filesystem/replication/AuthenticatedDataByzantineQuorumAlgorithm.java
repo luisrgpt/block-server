@@ -51,11 +51,11 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 	private PublicKey _publicKey;
 	private int _numberOfCorrectProcesses, _numberOfFaultyProcesses;
 	
-	private BroadcastState _broadcastState;
-	private enum BroadcastState {
-		ON,
-		OFF
-	}
+	//private BroadcastState _broadcastState;
+	//private enum BroadcastState {
+	//	ON,
+	//	OFF
+	//}
 	
 	public AuthenticatedDataByzantineQuorumAlgorithm(ProcessId processes[], ProcessId process, OneToNByzantineRegularRegisterListener oneToNByzantineRegularRegisterListener)
 			throws FileSystemException {
@@ -89,7 +89,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		
 		_publicKey = _iAuthenticator.getPublicKey();
 		
-		_broadcastState = BroadcastState.OFF;
+		//_broadcastState = BroadcastState.OFF;
 	}
 	
 	public void connect(ProcessId processId)
@@ -180,7 +180,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 	}
 	
 	private void initWrite() {
-		_broadcastState = BroadcastState.ON;
+		//_broadcastState = BroadcastState.ON;
 		++_writeTimeStamp;
 		_ackList = new HashMap<>();
 	}
@@ -190,12 +190,10 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		/*if(!processId.equals(_process)) {
 			return;
 		}*/
-		BlockId blockId = null;
-
 		Integer storageTimeStamp = _storageTimeStamps.remove(processId);
 		if(timeStamp > storageTimeStamp) {
 			_storageTimeStamps.put(processId, timeStamp);
-			blockId = _iReplicationServer.put_k(processId, timeStamp, keyBlock, encodedSignature);
+			_iReplicationServer.put_k(processId, timeStamp, keyBlock, encodedSignature);
 			
 			FileSystemLogger.logDescription(
 					"Writted Public Key into server with port " + _process.toString() + ":" +
@@ -210,9 +208,8 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		/*if(!processId.equals(_process)) {
 			return;
 		}*/
-		BlockId blockId = null;
 
-		blockId = _iReplicationServer.put_h(processId, timeStamp, hashBlock);
+		_iReplicationServer.put_h(processId, timeStamp, hashBlock);
 		
 		FileSystemLogger.logDescription(
 				"Writted Hash Block into server with port " + _process.toString() + ":" +
@@ -227,13 +224,12 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		/*if(!processId.equals(_process)) {
 			return;
 		}*/
-		BlockId blockId = null;
 		_storageTimeStamps.put(processId, 0);
 		
 		Integer storageTimeStamp = _storageTimeStamps.remove(processId);
 		if(timeStamp > storageTimeStamp) {
 			_storageTimeStamps.put(processId, timeStamp);
-			blockId = _iReplicationServer.storePubKey(processId, timeStamp, encodedPublicKey, encodedSignature);
+			_iReplicationServer.storePubKey(processId, timeStamp, encodedPublicKey, encodedSignature);
 			
 			FileSystemLogger.logDescription(
 					"Writted Public Key into server with port " + _process.toString() + ":" +
@@ -257,7 +253,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		if(_ackList.size() > (_numberOfCorrectProcesses + _numberOfFaultyProcesses) / 2) {
 			_ackList = new HashMap<>();
 			_oneToNByzantineRegularRegisterListener.onWriteReturn(ackFlag);
-			_broadcastState = BroadcastState.OFF;
+			//_broadcastState = BroadcastState.OFF;
 		}
 	}
 	
@@ -291,7 +287,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 	}
 	
 	private void initRead() {
-		_broadcastState = BroadcastState.ON;
+		//_broadcastState = BroadcastState.ON;
 		++_readId;
 		_readKeyBlockList = new HashMap<>();
 	}
@@ -343,7 +339,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
     		FileBlock finalFileBlock = highestValue(new HashSet<>(_readKeyBlockList.values()));
     		_readKeyBlockList = new HashMap<>();
     		_oneToNByzantineRegularRegisterListener.onReadReturn(finalFileBlock);
-    		_broadcastState = BroadcastState.OFF;
+    		//_broadcastState = BroadcastState.OFF;
     		
     		FileSystemLogger.logDescription(
     				"Readed Key Block from replicated file system:" +
@@ -358,7 +354,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 			return;
 		}
 		_oneToNByzantineRegularRegisterListener.onReadReturn(hashBlock);
-		_broadcastState = BroadcastState.OFF;
+		//_broadcastState = BroadcastState.OFF;
 		
 		FileSystemLogger.logDescription(
 				"Readed Hash Block from replicated file system:" +
@@ -472,7 +468,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 	    		}
 	    		_readKeyBlockList = new HashMap<>();
 	    		_oneToNByzantineRegularRegisterListener.onReadReturn(publicKeys);
-	    		_broadcastState = BroadcastState.OFF;
+	    		//_broadcastState = BroadcastState.OFF;
 	    		
 				FileSystemLogger.logDescription(
 						"Readed Public Key from replicated file system:" +

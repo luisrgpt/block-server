@@ -1,5 +1,7 @@
 package pt.ulisboa.tecnico.sec.filesystem.server;
 
+import java.io.File;
+import java.net.URISyntaxException;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.Arrays;
@@ -8,6 +10,9 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 
 import pt.ulisboa.tecnico.sec.filesystem.common.BlockId;
 import pt.ulisboa.tecnico.sec.filesystem.common.Constant;
@@ -26,13 +31,6 @@ import pt.ulisboa.tecnico.sec.filesystem.common.exception.NullArgumentException;
 import pt.ulisboa.tecnico.sec.filesystem.replication.AuthenticatedDataByzantineQuorumAlgorithm;
 import pt.ulisboa.tecnico.sec.filesystem.replication.IReplicationServer;
 import pt.ulisboa.tecnico.sec.filesystem.replication.OneToNByzantineRegularRegister;
-
-import java.io.File;
-import java.lang.System;
-import java.net.URISyntaxException;
-
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.ImmutableTriple;
 
 
 final class FileSystemServer {
@@ -113,12 +111,12 @@ final class FileSystemServer {
 		
 		public void connect(ProcessId processId)
 				throws FileSystemException {
-			//_oneToNByzantineRegularRegister.connect(processId);
+			_oneToNByzantineRegularRegister.connect(processId);
 		}
 		
 		public void disconnect(ProcessId processId)
 				throws FileSystemException {
-			//_oneToNByzantineRegularRegister.disconnect(processId);
+			_oneToNByzantineRegularRegister.disconnect(processId);
 		}
 	    
 		@SuppressWarnings("unused")

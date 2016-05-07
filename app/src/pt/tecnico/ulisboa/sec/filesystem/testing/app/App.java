@@ -24,7 +24,7 @@ public class App {
 			//Activate servers using ports 1099, 1100, 1101, 1102
 			FileSystemServerStarter.Init();
 			
-			//FileSystemServerStarter.crash(1099);
+			FileSystemServerStarter.crash(1099);
 			//FileSystemServerStarter.crash(1100);
 			//FileSystemServerStarter.crash(1101);
 			//FileSystemServerStarter.crash(1102);
@@ -34,7 +34,7 @@ public class App {
 			//FileSystemServerStarter.recover(1101);
 			//FileSystemServerStarter.recover(1102);
 
-			//Thread.sleep(INTERVAL);
+			//Thread.sleep(INTERVAL + 15000);
 			
 			byte[] buffer = "test1".getBytes();
 			byte[] aux3= new byte[buffer.length];
