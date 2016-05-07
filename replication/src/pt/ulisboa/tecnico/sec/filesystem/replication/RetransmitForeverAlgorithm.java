@@ -60,6 +60,24 @@ FairLossPointToPointLinksListener {
 			throw new FileSystemException(exception.getMessage(), exception);
 		}
 	}
+	
+	public void connect(ProcessId processId)
+			throws FileSystemException {
+		try {
+			_fairLossPointToPointLinks.connect(processId);
+		} catch (RemoteException exception) {
+			throw new FileSystemException(exception.getMessage(), exception);
+		}
+	}
+	
+	public void disconnect(ProcessId processId)
+			throws FileSystemException {
+		try {
+			_fairLossPointToPointLinks.disconnect(processId);
+		} catch (RemoteException exception) {
+			throw new FileSystemException(exception.getMessage(), exception);
+		}
+	}
 
 	private void startTimer() {
 		new Thread(new Runnable() {

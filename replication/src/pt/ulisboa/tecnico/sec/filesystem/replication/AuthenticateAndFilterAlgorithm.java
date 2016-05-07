@@ -26,7 +26,6 @@ import pt.ulisboa.tecnico.sec.filesystem.common.ReadFlag;
 import pt.ulisboa.tecnico.sec.filesystem.common.ValueFlag;
 import pt.ulisboa.tecnico.sec.filesystem.common.WriteFlag;
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
-import pt.ulisboa.tecnico.sec.filesystem.logging.FileSystemLogger;
 
 final class AuthenticateAndFilterAlgorithm
 implements AuthPerfectPointToPointLinks,
@@ -69,6 +68,17 @@ StubbornPointToPointLinksListener {
 			throw new FileSystemException(exception.getMessage(), exception);
 		}
 	}
+	
+	public void connect(ProcessId processId)
+			throws FileSystemException {
+		_stubbornPointToPointLinks.connect(processId);
+	}
+	
+	public void disconnect(ProcessId processId)
+			throws FileSystemException {
+		_stubbornPointToPointLinks.disconnect(processId);
+	}
+
 
 	public EncodedMac authenticate(byte[] ... data)
 			throws FileSystemException {	

@@ -25,6 +25,7 @@ import pt.ulisboa.tecnico.sec.filesystem.common.exception.InvalidRemoteArgumentE
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.NullArgumentException;
 import pt.ulisboa.tecnico.sec.filesystem.replication.AuthenticatedDataByzantineQuorumAlgorithm;
 import pt.ulisboa.tecnico.sec.filesystem.replication.IReplicationServer;
+import pt.ulisboa.tecnico.sec.filesystem.replication.OneToNByzantineRegularRegister;
 
 import java.io.File;
 import java.lang.System;
@@ -36,13 +37,27 @@ import org.apache.commons.lang3.tuple.ImmutableTriple;
 
 final class FileSystemServer {
 	
+	private FileSystemServerImpl _fileSystemServerImpl;
+	
 	FileSystemServer(char[] password, int port)
 			throws FileSystemException {
-		new FileSystemServerImpl(password, port);
+		_fileSystemServerImpl = new FileSystemServerImpl(password, port);
+	}
+	
+	public void connect(ProcessId processId)
+			throws FileSystemException {
+		_fileSystemServerImpl.connect(processId);
+	}
+	
+	public void disconnect(ProcessId processId)
+			throws FileSystemException {
+		_fileSystemServerImpl.disconnect(processId);
 	}
 	
 	private class FileSystemServerImpl
 			implements IReplicationServer {
+		private OneToNByzantineRegularRegister _oneToNByzantineRegularRegister;
+		
 		private final int portList[] = {1099, 1100, 1101, 1102};
 		
 		//Constants
@@ -72,7 +87,7 @@ final class FileSystemServer {
 					processes[index] = new ProcessId(portList[index], ProcessType.SERVER);
 				}
 				
-				new AuthenticatedDataByzantineQuorumAlgorithm(processes, new ProcessId(port, ProcessType.SERVER), this);
+				_oneToNByzantineRegularRegister = new AuthenticatedDataByzantineQuorumAlgorithm(processes, new ProcessId(port, ProcessType.SERVER), this);
 				
 				//Set security policy
 				System.setProperty(
@@ -95,6 +110,16 @@ final class FileSystemServer {
 				throw new FileSystemServerException("[" + port + "@main]: " + exception.getMessage(), exception);
 			}
 	    }
+		
+		public void connect(ProcessId processId)
+				throws FileSystemException {
+			//_oneToNByzantineRegularRegister.connect(processId);
+		}
+		
+		public void disconnect(ProcessId processId)
+				throws FileSystemException {
+			//_oneToNByzantineRegularRegister.disconnect(processId);
+		}
 	    
 		@SuppressWarnings("unused")
 		private void checkBlocksSize()

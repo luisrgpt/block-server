@@ -16,7 +16,7 @@ import pt.ulisboa.tecnico.sec.filesystem.common.ValueFlag;
 import pt.ulisboa.tecnico.sec.filesystem.common.WriteFlag;
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
 
-interface AuthPerfectPointToPointLinks {
+interface AuthPerfectPointToPointLinks extends TestingModule {
 	void onSend(ProcessId processId, WriteFlag writeFlag, Integer writeTimeStamp, KeyBlock keyBlock,  EncodedSignature encodedSignature) throws FileSystemException;
 	void onSend(ProcessId processId, WriteFlag writeFlag, Integer writeTimeStamp, HashBlock hashBlock) throws FileSystemException;
 	void onSend(ProcessId processId, WriteFlag writeFlag, Integer writeTimeStamp, EncodedPublicKey encodedPublicKey,  EncodedSignature encodedSignature) throws FileSystemException;

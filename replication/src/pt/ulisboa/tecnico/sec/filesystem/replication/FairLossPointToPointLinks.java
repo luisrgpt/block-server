@@ -31,4 +31,7 @@ interface FairLossPointToPointLinks extends FairLossPointToPointLinksListener {
 	void onSend(ProcessId processId, ValueFlag valueFlag, Integer readId, Integer timeStamp, KeyBlock keyBlock, EncodedSignature encodedSignature, EncodedMac encodedMac) throws FileSystemException, RemoteException;
 	void onSend(ProcessId processId, ValueFlag valueFlag, Integer readId, HashBlock hashBlock, EncodedMac encodedMac) throws FileSystemException, RemoteException;
 	void onSend(ProcessId processId, ValueFlag valueFlag, Integer readId, Set<ImmutableTriple<Integer, EncodedPublicKey, EncodedSignature>> encodedPublicKeys, EncodedMac encodedMac) throws FileSystemException, RemoteException;
+
+	void connect(ProcessId processId) throws FileSystemException, RemoteException;
+	void disconnect(ProcessId processId) throws FileSystemException, RemoteException;
 }

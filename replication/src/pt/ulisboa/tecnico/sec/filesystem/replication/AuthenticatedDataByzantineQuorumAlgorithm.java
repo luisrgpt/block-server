@@ -1,18 +1,17 @@
 package pt.ulisboa.tecnico.sec.filesystem.replication;
 
-import java.rmi.NotBoundException;
-import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.PublicKey;
 import java.security.Signature;
 import java.security.SignatureException;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
-import java.util.Map.Entry;
 import java.util.Set;
+
+import org.apache.commons.lang3.tuple.ImmutablePair;
+import org.apache.commons.lang3.tuple.ImmutableTriple;
 
 import pt.ulisboa.tecnico.sec.filesystem.authentication.CitizenCardMockupAuthenticator;
 import pt.ulisboa.tecnico.sec.filesystem.authentication.IAuthenticator;
@@ -30,9 +29,6 @@ import pt.ulisboa.tecnico.sec.filesystem.common.WriteFlag;
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.TamperedBlockException;
 import pt.ulisboa.tecnico.sec.filesystem.logging.FileSystemLogger;
-
-import org.apache.commons.lang3.tuple.ImmutablePair;
-import org.apache.commons.lang3.tuple.ImmutableTriple;
 
 public final class AuthenticatedDataByzantineQuorumAlgorithm
 		implements OneToNByzantineRegularRegister,
@@ -96,10 +92,20 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		_broadcastState = BroadcastState.OFF;
 	}
 	
+	public void connect(ProcessId processId)
+			throws FileSystemException {
+		_authPerfectPointToPointLinks.connect(processId);
+	}
+	
+	public void disconnect(ProcessId processId)
+			throws FileSystemException {
+		_authPerfectPointToPointLinks.disconnect(processId);
+	}
+	
 	public void onWrite(KeyBlock keyBlock)
 			throws FileSystemException {
 		FileSystemLogger.logDescription(
-				"Writting Key block from replicated file system using Block ID:" +
+				"Writting Key block into replicated file system:" +
 				System.getProperty("line.separator") +
 				keyBlock.toString());
 		
@@ -115,7 +121,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 	public void onWrite(HashBlock hashBlock)
 			throws FileSystemException {
 		FileSystemLogger.logDescription(
-				"Writting Hash block from replicated file system using Block ID:" +
+				"Writting Hash block into replicated file system:" +
 				System.getProperty("line.separator") +
 				hashBlock.toString());
 		
@@ -133,7 +139,7 @@ public final class AuthenticatedDataByzantineQuorumAlgorithm
 		EncodedPublicKey encodedPublicKey = new EncodedPublicKey(_publicKey.toString().getBytes());
 		
 		FileSystemLogger.logDescription(
-				"Writting Public Key from replicated file system using Block ID:" +
+				"Writting Public Key into replicated file system:" +
 				System.getProperty("line.separator") +
 				encodedPublicKey.toString());
 		

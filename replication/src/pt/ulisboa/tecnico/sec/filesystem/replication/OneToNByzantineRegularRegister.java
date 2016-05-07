@@ -8,7 +8,7 @@ import pt.ulisboa.tecnico.sec.filesystem.common.HashBlock;
 import pt.ulisboa.tecnico.sec.filesystem.common.KeyBlock;
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
 
-public interface OneToNByzantineRegularRegister {
+public interface OneToNByzantineRegularRegister extends TestingModule {
 	void onWrite(KeyBlock keyBlock) throws FileSystemException;
 	void onWrite(HashBlock hashBlock) throws FileSystemException;
 	EncodedPublicKey onWrite() throws FileSystemException;

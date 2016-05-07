@@ -6,10 +6,13 @@ import java.util.Random;
 
 import pt.ulisboa.tecnico.sec.filesystem.FileSystem;
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
+import pt.ulisboa.tecnico.sec.filesystem.server.FileSystemServerStarter;
 
 public class App {
+	
+	private static final int INTERVAL = 1000;
 
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
         //byte[] aux = "potatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotatopotato".getBytes(),
         //	   id,
         //	   aux2 = new byte[10];
@@ -18,9 +21,21 @@ public class App {
 		int totalTestsMade=0;
         
 		try {
+			//Activate servers using ports 1099, 1100, 1101, 1102
+			FileSystemServerStarter.Init();
 			
+			//FileSystemServerStarter.crash(1099);
+			//FileSystemServerStarter.crash(1100);
+			//FileSystemServerStarter.crash(1101);
+			//FileSystemServerStarter.crash(1102);
 			PublicKey pk = FileSystem.FS_init();
+			//FileSystemServerStarter.recover(1099);
+			//FileSystemServerStarter.recover(1100);
+			//FileSystemServerStarter.recover(1101);
+			//FileSystemServerStarter.recover(1102);
 
+			//Thread.sleep(INTERVAL);
+			
 			byte[] buffer = "test1".getBytes();
 			byte[] aux3= new byte[buffer.length];
 			
@@ -51,6 +66,8 @@ public class App {
 			}
 			totalTestsMade++;
 			
+			Thread.sleep(INTERVAL);
+			
 			//TEST3
 			System.out.println("Test3: Test data overwriting : ");
 			
@@ -71,6 +88,9 @@ public class App {
 				System.out.println(">>>>>>>>>>>>>>>>>>>Test3 - Failed!");
 			}
 			totalTestsMade++;
+			
+			Thread.sleep(INTERVAL);
+			
 			//TEST4 
 			System.out.println("Test4: Test reading from uncreated blocks: ");
 			aux3 = FileSystem.FS_read(pk, 200, aux3.length, size);
@@ -86,6 +106,8 @@ public class App {
 			
 			System.out.println(">>>>>>>>Security Tests<<<<<<<<<");
 			
+			Thread.sleep(INTERVAL);
+			
 			//TEST5
 			try{
 				System.out.println("Test5: Test tamper the blocks when the client sends to server: ");
@@ -100,8 +122,7 @@ public class App {
 			
 			totalTestsMade++;
 			
-			
-			
+			Thread.sleep(INTERVAL);
 			
 		   //TEST6
 		   System.out.println("Test7: The server will change the content of some block");
@@ -113,9 +134,12 @@ public class App {
 			} catch (FileSystemException e) {
 				System.out.println(">>>>>>>>>>>>>>>>>>Test6 Passed!");
 				testsPassed++;
-			} 
+			}
             
            totalTestsMade++;
+           
+           Thread.sleep(INTERVAL);
+           
           //TEST7
 			System.out.println("Test6: Impersonation by changing the publicKey of the put_k to someone's else : ");
 			try{
@@ -128,6 +152,8 @@ public class App {
 				testsPassed++;
 			}
             totalTestsMade++;
+            
+            Thread.sleep(INTERVAL);
             
             System.out.println("<<<<<<Tests for Part2>>>>> : ");
             
