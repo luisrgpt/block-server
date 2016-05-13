@@ -103,8 +103,9 @@ final class RmiNode extends UnicastRemoteObject implements FairLossPointToPointL
 	public void disconnect(ProcessId processId) throws FileSystemException {
 		try {
 			FileSystemLogger.logWarning(" " + processId.toString() + " is crashing...");
-			// Unsubmit file system server
+			// Unsubmit file system server			
 			LocateRegistry.getRegistry(processId.getPort()).unbind(Constant.SERVICE_NAME);
+	
 		} catch (RemoteException | NotBoundException exception) {
 			throw new FileSystemException(exception.getMessage(), exception);
 		}
