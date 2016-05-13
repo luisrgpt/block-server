@@ -40,15 +40,22 @@ public final class FileSystemServerStarter {
 	
 	public static void recover(int port)
 			throws FileSystemException {
-		FileSystemServer byzanthineProcess = _byzanthineProcesses.get(port);
+		FileSystemServer byzanthineProcess = _byzanthineProcesses.remove(port);
 		byzanthineProcess.connect(new ProcessId(port, ProcessType.SERVER));
 		_correctProcesses.put(port, byzanthineProcess);
 	}
 
 	public static void crash(int port)
 			throws FileSystemException {
-		FileSystemServer correctProcess = _correctProcesses.get(port);
+		FileSystemServer correctProcess = _correctProcesses.remove(port);
 		correctProcess.disconnect(new ProcessId(port, ProcessType.SERVER));
+		_byzanthineProcesses.put(port, correctProcess);
+	}
+	
+	public static void byzantinetypeone(int port){
+		//This byzantine server changes the keyblock's public key
+		FileSystemServer correctProcess = _correctProcesses.remove(port);
+		correctProcess.impersonate(new ProcessId(port, ProcessType.SERVER));
 		_byzanthineProcesses.put(port, correctProcess);
 	}
 }

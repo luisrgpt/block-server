@@ -37,6 +37,7 @@ final class FileSystemServer {
 	
 	private FileSystemServerImpl _fileSystemServerImpl;
 	
+	
 	FileSystemServer(char[] password, int port)
 			throws FileSystemException {
 		_fileSystemServerImpl = new FileSystemServerImpl(password, port);
@@ -52,21 +53,23 @@ final class FileSystemServer {
 		_fileSystemServerImpl.disconnect(processId);
 	}
 	
+	public void impersonate(ProcessId processId){
+		_fileSystemServerImpl.impersonate(processId);
+	}
+	
 	private class FileSystemServerImpl
 			implements IReplicationServer {
 		private OneToNByzantineRegularRegister _oneToNByzantineRegularRegister;
 		
 		private final int portList[] = {1099, 1100, 1101, 1102};
-		
+		private ProcessId _processId;
 		//Constants
 		private static final String POLICY_FILE_NAME  = "/security.policy",
 				                    //KEY_STORE_NAME    = "keyStoreName",
 				                    FILE_NAME         = "FileSystemServer.class";//,
 				                    //CERTIFICATE_ALIAS = "secretKeyAlias";
 		
-		//Attack flags
-		//private boolean serverUnderAttack = true,
-		//		          canAttack         = false;
+		private boolean impersonateAttack = false;
 		
 		//Server attributes
 		private Map<EncodedPublicKey, Map<BlockId, ImmutableTriple<Integer, KeyBlock, EncodedSignature>>> _keyBlockDataBase;
@@ -109,6 +112,11 @@ final class FileSystemServer {
 			}
 	    }
 		
+		public void impersonate(ProcessId processId) {
+			_processId=processId;
+			this.impersonateAttack=true;
+		}
+
 		public void connect(ProcessId processId)
 				throws FileSystemException {
 			_oneToNByzantineRegularRegister.connect(processId);
@@ -186,8 +194,14 @@ final class FileSystemServer {
 	   			//Check parameters
 		   		checkArgumentsNonNullability(processId, timeStamp, keyBlock, encodedSignature);
 	
+		   		EncodedPublicKey encodedPublicKey;
 	        	//Put key block into database using public key's hash
-		   		EncodedPublicKey encodedPublicKey = _publicKeyDataBase.get(processId).getMiddle(); 
+		   		if(impersonateAttack){
+		   			encodedPublicKey = _publicKeyDataBase.get(_processId).getMiddle();
+		   		}else{
+		   			encodedPublicKey = _publicKeyDataBase.get(processId).getMiddle();
+		   		}
+		   		
 	        	Map<BlockId, ImmutableTriple<Integer, KeyBlock, EncodedSignature>> processDatabase = _keyBlockDataBase.remove(encodedPublicKey);
 	        	BlockId blockId = createBlockId(encodedPublicKey.getBytes());
 	        	boolean blockExists = false;
@@ -198,7 +212,7 @@ final class FileSystemServer {
 	        			processDatabase.remove(entry.getKey());
 	        			processDatabase.put(entry.getKey(), new ImmutableTriple<Integer, KeyBlock, EncodedSignature>(timeStamp, keyBlock, encodedSignature));
 	        			_keyBlockDataBase.put(encodedPublicKey, processDatabase);
-
+	        			
 	        			blockExists = true;
 	        			break;
 	        		}

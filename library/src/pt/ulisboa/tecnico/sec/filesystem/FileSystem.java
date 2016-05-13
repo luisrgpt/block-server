@@ -3,6 +3,7 @@ package pt.ulisboa.tecnico.sec.filesystem;
 import java.util.List;
 
 import pt.ulisboa.tecnico.sec.filesystem.common.exception.FileSystemException;
+import pt.ulisboa.tecnico.sec.filesystem.replication.AttackFlag;
 
 import java.security.PublicKey;
 
