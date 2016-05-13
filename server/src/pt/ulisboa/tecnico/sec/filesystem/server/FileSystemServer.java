@@ -57,6 +57,10 @@ final class FileSystemServer {
 		_fileSystemServerImpl.impersonate(processId);
 	}
 	
+	public void tamper(ProcessId processId) {
+		_fileSystemServerImpl.tamper(processId);
+	}
+	
 	private class FileSystemServerImpl
 			implements IReplicationServer {
 		private OneToNByzantineRegularRegister _oneToNByzantineRegularRegister;
@@ -70,6 +74,7 @@ final class FileSystemServer {
 				                    //CERTIFICATE_ALIAS = "secretKeyAlias";
 		
 		private boolean impersonateAttack = false;
+		private boolean tamperAttack = false;
 		
 		//Server attributes
 		private Map<EncodedPublicKey, Map<BlockId, ImmutableTriple<Integer, KeyBlock, EncodedSignature>>> _keyBlockDataBase;
@@ -112,7 +117,17 @@ final class FileSystemServer {
 			}
 	    }
 		
+		public void tamper(ProcessId processId) {
+			//clear previous attacks
+			impersonateAttack = false;
+			
+			_processId=processId;
+			this.tamperAttack=true;
+		}
+
 		public void impersonate(ProcessId processId) {
+			tamperAttack = false;
+			
 			_processId=processId;
 			this.impersonateAttack=true;
 		}
@@ -242,6 +257,10 @@ final class FileSystemServer {
 		    	BlockId blockId = createBlockId(hashBlock.getBytes());
 	        	boolean blockExists = false;
 	        	
+	        	if(tamperAttack){
+	        		hashBlock = new HashBlock("hashblockAttack".getBytes());
+		   		}
+	        	
 	      		//Replace block if block exists
 	        	for (Entry<BlockId, ImmutablePair<Integer, HashBlock>> entry : _hashBlockDataBase.entrySet()) {
 	        		if(entry.getKey().hashCode() == blockId.hashCode()) {
@@ -298,4 +317,6 @@ final class FileSystemServer {
 	    //	canAttack=true;
 	    //}
 	}
+
+	
 }

@@ -58,4 +58,20 @@ public final class FileSystemServerStarter {
 		correctProcess.impersonate(new ProcessId(port, ProcessType.SERVER));
 		_byzanthineProcesses.put(port, correctProcess);
 	}
+	
+	public static void byzantinetypetwo(int port){
+		//This byzantine server changes the hashblock
+		
+		FileSystemServer process;
+		if(_correctProcesses.containsValue(port)){
+			process = _correctProcesses.remove(port);
+			_byzanthineProcesses.put(port, process);
+		}else{
+			process = _byzanthineProcesses.get(port);
+		}
+		
+		process.tamper(new ProcessId(port, ProcessType.SERVER));
+		
+	}
+	
 }

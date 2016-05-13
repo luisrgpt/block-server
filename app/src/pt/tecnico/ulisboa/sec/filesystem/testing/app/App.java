@@ -261,6 +261,80 @@ public class App {
             
             
             
+            
+            
+            System.out.println("####### 1 instance is byzanthine -type 2 #######");
+            System.out.println("this attack changes hashBlocks content upon put_h is executed");
+            FileSystemServerStarter.byzantinetypetwo(1099);
+            
+            totalTestsMade=0;
+            testsPassed=0;
+            //TEST1
+            try{
+				FileSystem.FS_write(-10, buffer.length, buffer);			
+				FileSystem.FS_read(pk, -10, 5, size);
+				System.out.println(">>>>>>>>>>>>>>Test1 - Failed!");
+			}catch(FileSystemException e){
+				System.out.println(">>>>>>>>>>>>>>Test1 - Passed!");
+				testsPassed++;
+			}
+			totalTestsMade++;
+			
+			//TEST2
+			System.out.println("Test2: Writting in valid position: pos==20");
+			
+			FileSystem.FS_write(20, buffer.length, buffer);
+			aux3 = FileSystem.FS_read(pk, 20, aux3.length, size);
+			
+			if (Arrays.equals(buffer, aux3)){
+				System.out.println(">>>>>>>>>>>>>>>Test2 - Passed!");
+				testsPassed++;
+			}else{
+				System.out.println(">>>>>>>>>>>>>>>Test2 - Failed!");
+			}
+			totalTestsMade++;
+			
+			Thread.sleep(INTERVAL);
+			
+			//TEST3
+			System.out.println("Test3: Test data overwriting : ");
+			
+			buffer = new byte[aux3.length];
+			//generate random bytes
+			new Random().nextBytes(buffer);
+			FileSystem.FS_write(0, buffer.length, buffer);
+			
+			new Random().nextBytes(buffer);
+			FileSystem.FS_write(0, buffer.length, buffer);
+			aux3 = FileSystem.FS_read(pk, 0, aux3.length, size);
+			
+			
+			if (Arrays.equals(buffer, aux3)){
+				System.out.println(">>>>>>>>>>>>>>>>>>>>Test3 - Passed!");
+				testsPassed++;
+			}else{
+				System.out.println(">>>>>>>>>>>>>>>>>>>Test3 - Failed!");
+			}
+			totalTestsMade++;
+			
+			Thread.sleep(INTERVAL);
+			
+			//TEST4 
+			System.out.println("Test4: Test reading from uncreated blocks: ");
+			aux3 = FileSystem.FS_read(pk, 200, aux3.length, size);
+
+			
+			if(Arrays.equals(aux3, new byte[aux3.length])){
+				System.out.println(">>>>>>>>>>>>>>>>>>Test4 - Passed!");
+				testsPassed++;
+			}else{
+				System.out.println(">>>>>>>>>>>>>>>>>>Test4 - Failed!");
+			}
+			totalTestsMade++;
+            
+            System.out.println("<<<<<<RESULTS>>>>> : "+testsPassed+"/"+totalTestsMade+" tests passed!");
+            
+            
             FileSystem.exit();
 		} catch (FileSystemException e) {
 			e.printStackTrace();
